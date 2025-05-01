@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 
 export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem }) {
-    const [logo, setLogo] = useState('');
-    const [compney, setCompney] = useState('');
+    const [company, setCompany] = useState('');
     const [category, setCategory] = useState('');
     const [billingCycle, setBillingCycle] = useState('monthly');
     const [nextBillingDate, setNextBillingDate] = useState('');
@@ -13,8 +12,7 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
 
     useEffect(() => {
         if (mode === 'edit' && currentItem) {
-            setLogo(currentItem.logo || '');
-            setCompney(currentItem.compney || '');
+            setCompany(currentItem.company || '');
             setCategory(currentItem.category || '');
             setBillingCycle(currentItem.billingCycle || 'monthly');
             setNextBillingDate(currentItem.nextBillingDate || '');
@@ -23,8 +21,7 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
             setNotes(currentItem.notes || '');
             setIsActive(currentItem.isActive !== undefined ? currentItem.isActive : true);
         } else {
-            setLogo('');
-            setCompney('');
+            setCompany('');
             setCategory('');
             setBillingCycle('monthly');
             setNextBillingDate('');
@@ -38,8 +35,7 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
     const handleSubmit = (e) => {
         e.preventDefault();
         const formData = {
-            logo,
-            compney,
+            company,
             category,
             billingCycle,
             nextBillingDate,
@@ -66,8 +62,8 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
                             <input 
                                 type="text" 
                                 className="input input-bordered w-full" 
-                                value={compney} 
-                                onChange={(e) => setCompney(e.target.value)}
+                                value={company} 
+                                onChange={(e) => setCompany(e.target.value)}
                                 required
                             />
                         </div>
