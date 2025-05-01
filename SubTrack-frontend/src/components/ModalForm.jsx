@@ -10,17 +10,35 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
     const [notes, setNotes] = useState('');
     const [isActive, setIsActive] = useState(true);
 
+    // Format date for input field
+    const formatDateForInput = (dateString) => {
+        if (!dateString) return '';
+        
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return '';
+            
+            return date.toISOString().split('T')[0];
+        } catch (err) {
+            console.error("Date formatting error:", err);
+            return '';
+        }
+    };
+
     useEffect(() => {
         if (mode === 'edit' && currentItem) {
+            // Handle both camelCase and snake_case field names
             setCompany(currentItem.company || '');
             setCategory(currentItem.category || '');
-            setBillingCycle(currentItem.billingCycle || 'monthly');
-            setNextBillingDate(currentItem.nextBillingDate || '');
+            setBillingCycle(currentItem.billing_cycle || currentItem.billingCycle || 'monthly');
+            setNextBillingDate(formatDateForInput(currentItem.next_billing_date || currentItem.nextBillingDate || ''));
             setAmount(currentItem.amount ? currentItem.amount.toString() : '');
             setCurrency(currentItem.currency || 'USD');
             setNotes(currentItem.notes || '');
-            setIsActive(currentItem.isActive !== undefined ? currentItem.isActive : true);
+            setIsActive(currentItem.is_active !== undefined ? currentItem.is_active : 
+                      (currentItem.isActive !== undefined ? currentItem.isActive : true));
         } else {
+            // Reset form for new subscription
             setCompany('');
             setCategory('');
             setBillingCycle('monthly');
@@ -32,19 +50,27 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
         }
     }, [mode, currentItem, isOpen]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const formData = {
-            company,
-            category,
-            billingCycle,
-            nextBillingDate,
-            amount: parseFloat(amount),
-            currency,
-            notes,
-            isActive
-        };
-        onSubmit(formData);
+        try {
+            // Create form data using snake_case for backend compatibility
+            const formData = {
+                company,
+                category,
+                billing_cycle: billingCycle,  // Convert to snake_case
+                next_billing_date: nextBillingDate, // Convert to snake_case
+                amount: parseFloat(amount),
+                currency,
+                notes,
+                is_active: isActive // Convert to snake_case
+            };
+            
+            console.log("Submitting data:", formData);
+            await onSubmit(formData);
+        } catch(err) {
+            console.error("Error submitting subscription", err);
+        }
+        onClose();
     };
 
     return (
@@ -142,6 +168,7 @@ export default function ModalForm({ isOpen, onClose, mode, onSubmit, currentItem
                             className="input input-bordered w-full" 
                             value={notes} 
                             onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Add notes about this subscription"
                         />
                     </div>
                     
