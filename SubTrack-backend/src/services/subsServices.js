@@ -8,7 +8,7 @@ export const getSubs = async() => {
 export const createSubs = async(subsData) => {
     const { company, category, billing_cycle, next_billing_date, amount, currency, notes, is_active} = subsData
     const { rows } = await query(
-        'INSERT INTO subscriptions (company, category, billing_cycle, next_billing_date, amount, currency, notes, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        'INSERT INTO subscriptions (company, category, billing_cycle, next_billing_date, amount, currency, notes, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
         [company, category, billing_cycle, next_billing_date, amount, currency, notes, is_active]
     );
     return rows[0];
