@@ -2,7 +2,8 @@ import * as subsService from '../services/subsServices.js'
 
 export const getSubs = async (req, res) => {
     try {
-        const subs = await subsService.getSubs();
+        const userId = req.user.id;
+        const subs = await subsService.getSubs(userId);
         res.status(200).json(subs);
     } catch (error) { 
         console.error('Error fetching subs', error);
@@ -12,11 +13,12 @@ export const getSubs = async (req, res) => {
 
 export const createSubs = async (req, res) => {
     try {
-        const subsData = req.body;
+        const userId = req.user.id;
+        const subsData = { ...req.body, user_id: userId };
         const newSubs = await subsService.createSubs(subsData);
         res.status(200).json(newSubs);
     } catch (error) { 
-        console.error('Error fetching subs', error);
+        console.error('Error creating subs', error);
         res.status(500).json({message: 'Internal Server Error'})
     }
 }
