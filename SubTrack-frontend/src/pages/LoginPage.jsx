@@ -6,25 +6,31 @@ import { useAuth } from '../context/AuthContext';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [localError, setLocalError] = useState('');
+  const { login, loading, error: authError } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setLocalError('');
+    
+    // Simple client-side validation
+    if (!email || !password) {
+      setLocalError('Email and password are required');
+      return;
+    }
     
     try {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError('Login failed. Please check your credentials.');
-    } finally {
-      setLoading(false);
+      // Error is already handled and set in AuthContext
+      console.error('Login handling error:', err);
     }
   };
+
+  // Display error message (local or from AuthContext)
+  const displayError = localError || authError;
 
   return (
     <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto w-full max-w-md">
@@ -36,9 +42,9 @@ export default function LoginPage() {
           </p>
         </div>
         
-        {error && (
+        {displayError && (
           <div className="alert alert-error mb-4">
-            <span>{error}</span>
+            <span>{displayError}</span>
           </div>
         )}
         

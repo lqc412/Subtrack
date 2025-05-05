@@ -7,22 +7,26 @@ export const authenticateToken = async (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
   
   if (!token) {
-    return res.status(401).json({ message: 'Access token is required' });
+    return res.status(401).json({ message: '需要访问令牌' });
   }
   
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
     
-    // Check if token exists in database
-    const { rows } = await query('SELECT * FROM auth_tokens WHERE token = $1 AND expires_at > NOW()', [token]);
+    // 检查令牌是否存在于数据库中
+    const { rows } = await query(
+      'SELECT * FROM auth_tokens WHERE token = $1 AND expires_at > NOW()',
+      [token]
+    );
+    
     if (rows.length === 0) {
-      return res.status(401).json({ message: 'Invalid or expired token' });
+      return res.status(401).json({ message: '无效或过期的令牌' });
     }
     
-    // Add user to request
+    // 将用户ID添加到请求对象
     req.user = { id: decoded.userId };
     next();
   } catch (error) {
-    return res.status(403).json({ message: 'Invalid token' });
+    return res.status(403).json({ message: '无效的令牌' });
   }
 };

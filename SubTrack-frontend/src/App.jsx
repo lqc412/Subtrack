@@ -3,19 +3,20 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './App.css';
 
-// Context
+// 导入上下文
 import { AuthProvider, useAuth } from './context/AuthContext';
 
-// Pages
+// 导入页面组件
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import SettingsPage from './pages/SettingsPage';
 
-// Layouts
+// 导入布局组件
 import MainLayout from './components/layout/MainLayout';
 
-// Auth Layout component
+// 认证布局组件
 const AuthLayout = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
@@ -34,7 +35,7 @@ const AuthLayout = ({ children }) => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">SubTrack</h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Track all your subscriptions in one place
+          在一处管理您的所有订阅
         </p>
       </div>
       {children}
@@ -42,7 +43,7 @@ const AuthLayout = ({ children }) => {
   );
 };
 
-// Protected Route component
+// 受保护的路由组件
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
@@ -59,7 +60,7 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Create a client for React Query
+// 创建React Query客户端
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -75,14 +76,19 @@ function App() {
       <Router>
         <AuthProvider>
           <Routes>
-            {/* Auth routes */}
+            {/* 认证路由 */}
             <Route path="/login" element={
               <AuthLayout>
                 <LoginPage />
               </AuthLayout>
             } />
+            <Route path="/register" element={
+              <AuthLayout>
+                <RegisterPage />
+              </AuthLayout>
+            } />
             
-            {/* Protected routes */}
+            {/* 受保护的路由 */}
             <Route path="/" element={
               <ProtectedRoute>
                 <MainLayout />
@@ -93,16 +99,16 @@ function App() {
               <Route path="settings" element={<SettingsPage />} />
             </Route>
             
-            {/* 404 route */}
+            {/* 404路由 */}
             <Route path="*" element={<div className="flex items-center justify-center h-screen">
               <div className="text-center">
                 <h1 className="text-4xl font-bold">404</h1>
-                <p className="mt-2">Page not found</p>
+                <p className="mt-2">页面未找到</p>
                 <button 
                   className="btn btn-primary mt-4"
                   onClick={() => window.history.back()}
                 >
-                  Go Back
+                  返回
                 </button>
               </div>
             </div>} />
