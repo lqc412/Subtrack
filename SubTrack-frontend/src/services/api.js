@@ -1,17 +1,16 @@
-// src/services/api.js
 import axios from 'axios';
 
-// 创建axios实例
+// Create an axios instance
 const api = axios.create({
   baseURL: 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json',
   },
-  // 允许发送凭据以支持跨域请求中的cookie
+  // Allow credentials for cross-origin requests with cookies
   withCredentials: true
 });
 
-// 请求拦截器，添加认证令牌
+// Request interceptor - add auth token if available
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -25,22 +24,20 @@ api.interceptors.request.use(
   }
 );
 
-// 响应拦截器，处理错误
+// Response interceptor - handle common auth errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 处理会话超时或未授权访问
     if (error.response && error.response.status === 401) {
-      // 清除本地存储的令牌
+      // Remove token from local storage
       localStorage.removeItem('token');
-      
-      // 如果不在登录页面，重定向到登录页面
+
+      // Redirect to login page if not already there
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
     }
-    
-    // 将错误转发给调用者
+
     return Promise.reject(error);
   }
 );

@@ -1,26 +1,25 @@
-// src/routes/subsRoute.js
 import express from 'express';
 import * as subsController from '../controllers/subsController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// 添加认证中间件到所有订阅路由
+// All routes below require authentication
 router.use(authenticateToken);
 
-// 获取当前用户的所有订阅
+// GET /subs - get all subscriptions for current user
 router.get('/subs', subsController.getSubs);
 
-// 创建新订阅
+// POST /subs - create a new subscription
 router.post('/subs', subsController.createSubs);
 
-// 更新订阅
+// PUT /subs/:id - update a subscription by ID
 router.put('/subs/:id', subsController.updateSubs);
 
-// 删除订阅
+// DELETE /subs/:id - delete a subscription by ID
 router.delete('/subs/:id', subsController.deleteSubs);
 
-// 搜索订阅
-router.get('/subs/search', subsController.searchSubs); 
+// GET /subs/search - search subscriptions
+router.get('/subs/search', subsController.searchSubs);
 
 export default router;
