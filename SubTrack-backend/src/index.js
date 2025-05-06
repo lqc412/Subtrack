@@ -1,4 +1,3 @@
-// src/index.js
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -9,33 +8,33 @@ import userRoute from './routes/userRoute.js';
 const app = express();
 const port = process.env.PORT || 3000;
 
-// CORS 配置
+// CORS configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
 
-// 中间件
+// Middleware
 app.use(express.json());
 app.use(cookieParser());
 
-// 路由
+// API routes
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute);
 app.use('/api', subsRoute);
 
-// 基础路由，用于健康检查
+// Root route - health check
 app.get('/', (req, res) => {
-  res.send('SubTrack API 运行正常');
+  res.send('SubTrack API is running');
 });
 
-// 错误处理中间件
+// Global error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: '服务器内部错误' });
+  res.status(500).json({ message: 'Internal Server Error' });
 });
 
-// 启动服务器
+// Start server
 app.listen(port, () => {
-  console.log(`服务器在端口 ${port} 上运行`);
+  console.log(`Server is running on port ${port}`);
 });

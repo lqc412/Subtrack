@@ -1,4 +1,3 @@
-// src/pages/SettingsPage.jsx
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { User, CreditCard, Bell, Shield } from 'lucide-react';

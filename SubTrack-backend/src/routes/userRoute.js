@@ -1,26 +1,25 @@
-// src/routes/userRoute.js
 import express from 'express';
 import * as userController from '../controllers/userController.js';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// 所有用户路由都需要认证
+// All routes below require authentication
 router.use(authenticateToken);
 
-// 获取当前用户信息
+// GET /user/me - get current user info
 router.get('/me', userController.getCurrentUser);
 
-// 更新用户个人资料
+// PUT /user/profile - update profile
 router.put('/profile', userController.updateProfile);
 
-// 获取用户设置
+// GET /user/preferences - get user preferences
 router.get('/preferences', userController.getUserPreferences);
 
-// 更新用户设置
+// PUT /user/preferences - update user preferences
 router.put('/preferences', userController.updateUserPreferences);
 
-// 更改密码
+// PUT /user/password - change password
 router.put('/password', userController.changePassword);
 
 export default router;
