@@ -95,14 +95,27 @@ export const updateUserPreferences = async (req, res) => {
 
 /**
  * Change user password (requires current password validation)
+ * and invalidate all user tokens (force logout)
  */
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.id;
     const { currentPassword, newPassword } = req.body;
 
-    const user = await userService.getUserById(userId);
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
 
+    const user = await userService.getUserById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (!user.password_hash) {
+      return res.status(400).json({ message: 'Password reset required. Please contact support.' });
+    }
+    
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Current password is incorrect' });
@@ -111,9 +124,20 @@ export const changePassword = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
+    // Update password
     await userService.updatePassword(userId, hashedPassword);
+    
+    // Get the current token from the Authorization header
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    res.json({ message: 'Password updated successfully' });
+    // Invalidate all user tokens (this will force logout on all devices)
+    await authService.deleteToken(userId);
+
+    res.json({ 
+      message: 'Password updated successfully',
+      logout: true // Signal to frontend that user should be logged out
+    });
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ message: 'Internal Server Error' });

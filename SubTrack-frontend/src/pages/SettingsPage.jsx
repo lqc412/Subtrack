@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { User, CreditCard, Bell, Shield, Upload } from 'lucide-react';
 import api from '../services/api'; // Use the configured API instance
 
 export default function SettingsPage() {
-  const { currentUser, refreshUser } = useAuth();
+  const { currentUser, refreshUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -140,15 +142,19 @@ export default function SettingsPage() {
       return;
     }
     
+    // Validate data presence
+    if (!passwordData.current_password || !passwordData.new_password) {
+      setMessage({ type: 'error', text: 'Current password and new password are required' });
+      setLoading(false);
+      return;
+    }
+    
     try {
-      // Using API instance for password
-      await api.put('/users/password', {
-        current_password: passwordData.current_password,
-        new_password: passwordData.new_password
+      // Using consistent naming for request parameters
+      const response = await api.put('/users/password', {
+        currentPassword: passwordData.current_password,
+        newPassword: passwordData.new_password
       });
-      
-      // Handle successful response
-      setMessage({ type: 'success', text: 'Password updated successfully' });
       
       // Clear password fields
       setPasswordData({
@@ -157,6 +163,24 @@ export default function SettingsPage() {
         confirm_password: ''
       });
       
+      // Check if server signaled logout is needed
+      if (response.data.logout) {
+        // Show success message briefly before redirecting
+        setMessage({ 
+          type: 'success', 
+          text: 'Password updated successfully. You will be logged out...' 
+        });
+        
+        // Wait a moment for the user to see the message
+        setTimeout(() => {
+          // Log out and redirect to login page
+          logout();
+          navigate('/login');
+        }, 2000);
+      } else {
+        // Regular success message if no logout needed
+        setMessage({ type: 'success', text: 'Password updated successfully' });
+      }
     } catch (error) {
       console.error('Error updating password:', error);
       setMessage({ 
