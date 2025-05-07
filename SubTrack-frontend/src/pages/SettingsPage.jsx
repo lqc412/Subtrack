@@ -1,25 +1,67 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, CreditCard, Bell, Shield } from 'lucide-react';
+import { User, CreditCard, Bell, Shield, Upload } from 'lucide-react';
+import api from '../services/api'; // Use the configured API instance
 
 export default function SettingsPage() {
   const { currentUser, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // Profile data state
   const [profileData, setProfileData] = useState({
     username: currentUser?.username || '',
     email: currentUser?.email || '',
     profile_image: currentUser?.profile_image || ''
   });
+  
+  // File upload state
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(currentUser?.profile_image || '');
+  const fileInputRef = useRef(null);
+  
+  // Preferences state
   const [preferences, setPreferences] = useState({
-    theme_preference: 'light',
-    currency_preference: 'USD',
+    theme_preference: currentUser?.theme_preference || 'light',
+    currency_preference: currentUser?.currency_preference || 'USD',
     notification_preferences: {
-      email_notifications: true,
-      payment_reminders: true
+      email_notifications: currentUser?.notification_preferences?.email_notifications ?? true,
+      payment_reminders: currentUser?.notification_preferences?.payment_reminders ?? true
     }
   });
+  
+  // Security state
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+
+  // Image upload handlers
+  const handleImageClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file is an image
+    if (!file.type.match('image.*')) {
+      setMessage({ type: 'error', text: 'Please select an image file' });
+      return;
+    }
+
+    // Validate file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image size should not exceed 5MB' });
+      return;
+    }
+
+    setProfileImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
@@ -27,22 +69,35 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
-      // In a real app, this would call your API
-      // await api.put('/users/profile', profileData);
+      // Create FormData object to handle the file upload
+      const formData = new FormData();
+      formData.append('username', profileData.username);
+      formData.append('email', profileData.email);
       
-      // For demo purposes, simulate a successful update
-      setTimeout(() => {
-        setMessage({ type: 'success', text: 'Profile updated successfully' });
-        setLoading(false);
-      }, 1000);
+      if (profileImage) {
+        formData.append('profile_image', profileImage);
+      } else if (profileData.profile_image) {
+        formData.append('profile_image_url', profileData.profile_image);
+      }
+
+      // Don't set Content-Type header manually - browser will set it correctly with boundary
+      const response = await api.put('/users/profile', formData);
       
-      // Update the user in context
-      refreshUser();
+      // Handle successful response
+      setMessage({ type: 'success', text: 'Profile updated successfully' });
+      
+      // Update the user in context with the new data from the server
+      refreshUser(response.data);
+      
     } catch (error) {
+      // Handle error properly
+      console.error('Error updating profile:', error);
       setMessage({ 
         type: 'error', 
-        text: 'Failed to update profile' 
+        text: error.response?.data?.message || 'Failed to update profile' 
       });
+    } finally {
+      // Always stop loading regardless of success or failure
       setLoading(false);
     }
   };
@@ -53,27 +108,73 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
-      // In a real app, this would call your API
-      // await api.put('/users/preferences', preferences);
+      // Using API instance for preferences
+      const response = await api.put('/users/preferences', preferences);
       
-      // For demo purposes, simulate a successful update
-      setTimeout(() => {
-        setMessage({ type: 'success', text: 'Preferences updated successfully' });
-        setLoading(false);
-      }, 1000);
+      // Handle successful response
+      setMessage({ type: 'success', text: 'Preferences updated successfully' });
+      
+      // Update the user context if needed
+      refreshUser(response.data);
+      
     } catch (error) {
+      console.error('Error updating preferences:', error);
       setMessage({ 
         type: 'error', 
-        text: 'Failed to update preferences' 
+        text: error.response?.data?.message || 'Failed to update preferences' 
       });
+    } finally {
       setLoading(false);
     }
   };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    // Password change implementation
-    setMessage({ type: 'success', text: 'Password updated successfully' });
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    // Validate password match
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setMessage({ type: 'error', text: 'New passwords do not match' });
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Using API instance for password
+      await api.put('/users/password', {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password
+      });
+      
+      // Handle successful response
+      setMessage({ type: 'success', text: 'Password updated successfully' });
+      
+      // Clear password fields
+      setPasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+      
+    } catch (error) {
+      console.error('Error updating password:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.message || 'Failed to update password' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for password field changes
+  const handlePasswordInputChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
@@ -123,6 +224,47 @@ export default function SettingsPage() {
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Profile Information</h2>
               
+              <div className="flex flex-col items-center mb-6">
+                <div 
+                  onClick={handleImageClick}
+                  className="w-32 h-32 rounded-full border-2 border-primary overflow-hidden cursor-pointer relative"
+                >
+                  {imagePreview ? (
+                    <img 
+                      src={imagePreview} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                      <User size={48} className="text-gray-400" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all duration-200">
+                    <Upload size={24} className="text-white opacity-0 hover:opacity-100" />
+                  </div>
+                </div>
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+                <button 
+                  type="button" 
+                  className="btn btn-sm btn-outline mt-2"
+                  onClick={handleImageClick}
+                >
+                  Change Photo
+                </button>
+                {profileImage && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Selected: {profileImage.name}
+                  </p>
+                )}
+              </div>
+              
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Username</span>
@@ -151,15 +293,26 @@ export default function SettingsPage() {
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Profile Image URL</span>
+                  <span className="label-text">Profile Image URL (Alternative to upload)</span>
                 </label>
                 <input 
                   type="text" 
                   className="input input-bordered" 
                   value={profileData.profile_image}
-                  onChange={(e) => setProfileData({...profileData, profile_image: e.target.value})}
+                  onChange={(e) => {
+                    setProfileData({...profileData, profile_image: e.target.value});
+                    if (!profileImage && e.target.value) {
+                      setImagePreview(e.target.value);
+                    }
+                  }}
                   placeholder="https://example.com/profile.jpg"
+                  disabled={profileImage !== null}
                 />
+                {profileImage && (
+                  <label className="label">
+                    <span className="label-text-alt text-warning">Disabled while you have an image selected for upload</span>
+                  </label>
+                )}
               </div>
               
               <button 
@@ -286,7 +439,10 @@ export default function SettingsPage() {
                 </label>
                 <input 
                   type="password" 
+                  name="current_password"
                   className="input input-bordered" 
+                  value={passwordData.current_password}
+                  onChange={handlePasswordInputChange}
                   required
                 />
               </div>
@@ -297,7 +453,10 @@ export default function SettingsPage() {
                 </label>
                 <input 
                   type="password" 
+                  name="new_password"
                   className="input input-bordered" 
+                  value={passwordData.new_password}
+                  onChange={handlePasswordInputChange}
                   required
                   minLength={6}
                 />
@@ -312,15 +471,24 @@ export default function SettingsPage() {
                 </label>
                 <input 
                   type="password" 
+                  name="confirm_password"
                   className="input input-bordered" 
+                  value={passwordData.confirm_password}
+                  onChange={handlePasswordInputChange}
                   required
                 />
+                {passwordData.new_password !== passwordData.confirm_password && 
+                 passwordData.confirm_password && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">Passwords do not match</span>
+                  </label>
+                )}
               </div>
               
               <button 
                 type="submit" 
                 className="btn btn-primary"
-                disabled={loading}
+                disabled={loading || (passwordData.new_password !== passwordData.confirm_password && passwordData.confirm_password)}
               >
                 {loading ? (
                   <span className="loading loading-spinner loading-sm"></span>
