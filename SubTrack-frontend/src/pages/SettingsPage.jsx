@@ -1,5 +1,5 @@
 // src/pages/SettingsPage.jsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User, CreditCard, Bell, Shield, Upload } from 'lucide-react';
@@ -19,6 +19,18 @@ export default function SettingsPage() {
     email: currentUser?.email || '',
     profile_image: currentUser?.profile_image || ''
   });
+
+  // Update local state when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setProfileData({
+        username: currentUser.username || '',
+        email: currentUser.email || '',
+        profile_image: currentUser.profile_image || ''
+      });
+      setImagePreview(currentUser.profile_image || '');
+    }
+  }, [currentUser]);
   
   // File upload state
   const [profileImage, setProfileImage] = useState(null);
@@ -84,11 +96,27 @@ export default function SettingsPage() {
         formData.append('profile_image_url', profileData.profile_image);
       }
 
+      // Make sure to log the FormData for debugging
+      console.log("Submitting profile update with data:", {
+        username: profileData.username,
+        email: profileData.email,
+        hasProfileImage: !!profileImage,
+        profileImageUrl: profileData.profile_image
+      });
+
       // Don't set Content-Type header manually - browser will set it correctly with boundary
       const response = await api.put('/users/profile', formData);
       
       // Handle successful response
       setMessage({ type: 'success', text: 'Profile updated successfully' });
+      
+      // Reset file input after successful upload
+      if (profileImage) {
+        setProfileImage(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
       
       // Update the user in context with the new data from the server
       refreshUser();
@@ -203,7 +231,7 @@ export default function SettingsPage() {
     }));
   };
 
-  // 头像上传组件
+  // Profile image section with enhanced debug info
   const ProfileImageSection = () => {
     return (
       <div className="flex flex-col items-center mb-6">
@@ -211,20 +239,20 @@ export default function SettingsPage() {
           onClick={handleImageClick}
           className="relative cursor-pointer"
         >
-          {/* 使用AvatarDisplay组件显示当前头像或上传预览 */}
+          {/* Use AvatarDisplay component with explicit props */}
           <AvatarDisplay 
             src={imagePreview || profileData.profile_image}
-            username={profileData.username}
+            username={profileData.username || 'User'}
             size="2xl"
           />
           
-          {/* 上传悬浮效果 */}
+          {/* Upload hover effect */}
           <div className="absolute inset-0 rounded-full bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all duration-200">
             <Upload size={24} className="text-white opacity-0 hover:opacity-100" />
           </div>
         </div>
         
-        {/* 隐藏的文件输入 */}
+        {/* Hidden file input */}
         <input 
           type="file"
           ref={fileInputRef}
@@ -246,6 +274,12 @@ export default function SettingsPage() {
             Selected: {profileImage.name}
           </p>
         )}
+        
+        {/* Debug info */}
+        <div className="text-xs text-gray-400 mt-1">
+          {imagePreview ? 'Preview URL set' : 'No preview URL'} | 
+          {profileData.profile_image ? ' Profile image URL set' : ' No profile image URL'}
+        </div>
       </div>
     );
   };
@@ -297,7 +331,7 @@ export default function SettingsPage() {
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Profile Information</h2>
               
-              {/* 使用新的头像组件 */}
+              {/* Using enhanced avatar component */}
               <ProfileImageSection />
               
               <div className="form-control">
