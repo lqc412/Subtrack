@@ -28,27 +28,42 @@ export const getCurrentUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { username, email, profile_image } = req.body;
+    const { username, email } = req.body;
+    
+    // 构建更新数据对象
+    const updateData = {
+      username,
+      email
+    };
 
-    // If email is changed, check for duplicates
+    // 处理头像上传
+    if (req.file) {
+      // 生成公开访问URL
+      const serverUrl = `${req.protocol}://${req.get('host')}`;
+      const profileImageUrl = `${serverUrl}/uploads/avatars/${req.file.filename}`;
+      
+      // 添加到更新数据
+      updateData.profile_image = profileImageUrl;
+    } else if (req.body.profile_image_url) {
+      // 如果是直接提供的URL
+      updateData.profile_image = req.body.profile_image_url;
+    }
+
+    // 如果更改了邮箱，检查是否已被使用
     if (email) {
       const existingUser = await authService.findUserByEmail(email);
       if (existingUser && existingUser.id !== userId) {
-        return res.status(400).json({ message: 'Email is already in use by another user' });
+        return res.status(400).json({ message: '邮箱已被其他用户使用' });
       }
     }
 
-    const updatedUser = await userService.updateUser(userId, {
-      username,
-      email,
-      profile_image
-    });
+    const updatedUser = await userService.updateUser(userId, updateData);
 
     delete updatedUser.password_hash;
     res.json(updatedUser);
   } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('更新个人资料出错:', error);
+    res.status(500).json({ message: '服务器内部错误' });
   }
 };
 

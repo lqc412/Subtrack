@@ -1,8 +1,10 @@
+// src/pages/SettingsPage.jsx
 import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { User, CreditCard, Bell, Shield, Upload } from 'lucide-react';
-import api from '../services/api'; // Use the configured API instance
+import api from '../services/api';
+import AvatarDisplay from '../components/AvatarDisplay';
 
 export default function SettingsPage() {
   const { currentUser, refreshUser, logout } = useAuth();
@@ -89,7 +91,7 @@ export default function SettingsPage() {
       setMessage({ type: 'success', text: 'Profile updated successfully' });
       
       // Update the user in context with the new data from the server
-      refreshUser(response.data);
+      refreshUser();
       
     } catch (error) {
       // Handle error properly
@@ -117,7 +119,7 @@ export default function SettingsPage() {
       setMessage({ type: 'success', text: 'Preferences updated successfully' });
       
       // Update the user context if needed
-      refreshUser(response.data);
+      refreshUser();
       
     } catch (error) {
       console.error('Error updating preferences:', error);
@@ -201,6 +203,53 @@ export default function SettingsPage() {
     }));
   };
 
+  // 头像上传组件
+  const ProfileImageSection = () => {
+    return (
+      <div className="flex flex-col items-center mb-6">
+        <div 
+          onClick={handleImageClick}
+          className="relative cursor-pointer"
+        >
+          {/* 使用AvatarDisplay组件显示当前头像或上传预览 */}
+          <AvatarDisplay 
+            src={imagePreview || profileData.profile_image}
+            username={profileData.username}
+            size="2xl"
+          />
+          
+          {/* 上传悬浮效果 */}
+          <div className="absolute inset-0 rounded-full bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all duration-200">
+            <Upload size={24} className="text-white opacity-0 hover:opacity-100" />
+          </div>
+        </div>
+        
+        {/* 隐藏的文件输入 */}
+        <input 
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+        
+        <button 
+          type="button" 
+          className="btn btn-sm btn-outline mt-2"
+          onClick={handleImageClick}
+        >
+          Change Photo
+        </button>
+        
+        {profileImage && (
+          <p className="text-sm text-gray-500 mt-1">
+            Selected: {profileImage.name}
+          </p>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Settings</h1>
@@ -248,46 +297,8 @@ export default function SettingsPage() {
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Profile Information</h2>
               
-              <div className="flex flex-col items-center mb-6">
-                <div 
-                  onClick={handleImageClick}
-                  className="w-32 h-32 rounded-full border-2 border-primary overflow-hidden cursor-pointer relative"
-                >
-                  {imagePreview ? (
-                    <img 
-                      src={imagePreview} 
-                      alt="Profile" 
-                      className="w-full h-full object-cover" 
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                      <User size={48} className="text-gray-400" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all duration-200">
-                    <Upload size={24} className="text-white opacity-0 hover:opacity-100" />
-                  </div>
-                </div>
-                <input 
-                  type="file"
-                  ref={fileInputRef}
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-                <button 
-                  type="button" 
-                  className="btn btn-sm btn-outline mt-2"
-                  onClick={handleImageClick}
-                >
-                  Change Photo
-                </button>
-                {profileImage && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Selected: {profileImage.name}
-                  </p>
-                )}
-              </div>
+              {/* 使用新的头像组件 */}
+              <ProfileImageSection />
               
               <div className="form-control">
                 <label className="label">
