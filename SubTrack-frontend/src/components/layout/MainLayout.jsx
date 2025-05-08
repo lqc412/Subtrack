@@ -3,7 +3,7 @@
 
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Home, CreditCard, Settings } from 'lucide-react';
+import { Home, CreditCard, Settings, Mail } from 'lucide-react';
 import AvatarDisplay from '../AvatarDisplay'; // 保留基础头像组件
 import UserAvatar from '../UserAvatar'; // 导入复合用户头像组件
 
@@ -81,6 +81,12 @@ export default function MainLayout() {
                   Subscriptions
                 </NavLink>
               </li>
+              <li>
+              <NavLink to="/email-integration" className={({ isActive }) => isActive ? 'active' : ''}>
+                <Mail size={18} />
+                Email Integration
+              </NavLink>
+            </li>
               <li>
                 <NavLink to="/settings" className={({ isActive }) => isActive ? 'active' : ''}>
                   <Settings size={18} />
