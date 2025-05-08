@@ -254,13 +254,14 @@ export class EmailService {
         }
       }
       
-      // Store detected subscriptions in a table for the frontend to display
-      // You would need to create a temporary_detected_subscriptions table for this
+      // Store detected subscriptions in the database
+      if (detectedSubscriptions.length > 0) {
+        await this.storeDetectedSubscriptions(userId, importId, detectedSubscriptions);
+      }
       
       // Complete the import
       await this.completeImport(importId, connection.id, processed, found);
       
-      // Return detected subscriptions
       return detectedSubscriptions;
     } catch (error) {
       console.error('Error in async email processing:', error);
@@ -271,6 +272,20 @@ export class EmailService {
          WHERE id = $2`,
         [error.message, importId]
       );
+    }
+  }
+  
+  // Update import status with error message
+  async updateImportStatus(importId, status, errorMessage = null) {
+    try {
+      await query(
+        `UPDATE email_import_logs
+         SET status = $1, error_message = $2, updated_at = NOW()
+         WHERE id = $3`,
+        [status, errorMessage, importId]
+      );
+    } catch (error) {
+      console.error('Error updating import status:', error);
     }
   }
   
