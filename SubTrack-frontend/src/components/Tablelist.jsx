@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { MoreVertical } from "lucide-react";
 import CompanyLogo from "./CompanyLogo";
-import axios from "axios";
+import api from "../services/api";
 
 export default function TableList({ onOpen, tableData, setTableData, searchTerm }) {
   const [error, setError] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredData = tableData.filter(
     (item) =>
@@ -15,16 +16,28 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
   );
 
   const handleDelete = async (id) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this?");
+    const confirmDelete = window.confirm("Are you sure you want to delete this subscription?");
     if (confirmDelete) {
         try {
-            await axios.delete(`http://localhost:3000/api/subs/${id}`);
+            setIsDeleting(true);
+            // Make sure authorization header is included by using the api instance
+            await api.delete(`/subs/${id}`);
+            // Update local state after successful delete
             setTableData((prevData) => prevData.filter(item => item.id !== id));
+            setError(null);
         } catch (err) {
-            setError(err.message);
+            console.error("Delete error:", err);
+            setError(err.response?.data?.message || "Failed to delete subscription. Please try again.");
+            
+            // If token expired, the api interceptor will handle redirection to login
+            if (err.response?.status !== 401) {
+                alert("Error deleting subscription: " + (err.response?.data?.message || err.message));
+            }
+        } finally {
+            setIsDeleting(false);
         }
     }
-};
+  };
 
   const getTextClass = (item) => (item.is_active ? "" : "text-gray-400 line-through");
 
@@ -52,11 +65,23 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
   }
 
   if (error) {
-    return <div className="alert alert-error">Error loading data: {error}</div>;
+    return (
+      <div className="alert alert-error">
+        <span>Error: {error}</span>
+        <button className="btn btn-sm" onClick={() => setError(null)}>Dismiss</button>
+      </div>
+    );
   }
 
   return (
     <div className="overflow-x-auto mt-1">
+      {isDeleting && (
+        <div className="flex justify-center p-4">
+          <span className="loading loading-spinner loading-md"></span>
+          <span className="ml-2">Deleting...</span>
+        </div>
+      )}
+      
       <table className="table table-zebra">
         <thead>
           <tr>
@@ -111,7 +136,11 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
                       </button>
                     </li>
                     <li>
-                      <button className="text-error" onClick={() => handleDelete(item.id)}>
+                      <button 
+                        className="text-error" 
+                        onClick={() => handleDelete(item.id)}
+                        disabled={isDeleting}
+                      >
                         Delete
                       </button>
                     </li>

@@ -332,7 +332,7 @@ export default function SettingsPage() {
               <h2 className="text-xl font-bold mb-4">Profile Information</h2>
               
               {/* Using enhanced avatar component */}
-              <ProfileImageSection />
+              {/* <ProfileImageSection /> */}
               
               <div className="form-control">
                 <label className="label">
