@@ -135,3 +135,37 @@ export const removeConnection = async (req, res) => {
     res.status(500).json({ message: error.message || 'Internal Server Error' });
   }
 };
+
+// Get recently detected subscriptions
+export const getRecentSubscriptions = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { importId } = req.query;
+      
+      if (!importId) {
+        return res.status(400).json({ message: 'Import ID is required' });
+      }
+      
+      // Verify the import belongs to the user
+      const importCheck = await EmailService.getImportStatus(importId, userId);
+      
+      if (!importCheck) {
+        return res.status(404).json({ message: 'Import not found' });
+      }
+      
+      // Get detected subscriptions for this import
+      const subscriptions = await EmailService.getDetectedSubscriptions(userId, importId);
+      
+      // If the import completed but no subscriptions were found, return a more helpful message
+      if (importCheck.status === 'completed' && subscriptions.length === 0) {
+        return res.status(200).json([]);
+      }
+      
+      res.status(200).json(subscriptions);
+    } catch (error) {
+      console.error('Error fetching recent subscriptions:', error);
+      res.status(500).json({ 
+        message: error.message || 'Failed to retrieve subscription data' 
+      });
+    }
+  };

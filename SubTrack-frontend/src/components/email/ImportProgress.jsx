@@ -1,65 +1,80 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 
 export default function ImportProgress({ importId, onComplete }) {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  useEffect(() => {
-    let intervalId;
-    
-    const fetchStatus = async () => {
-      try {
-        const response = await api.get(`/email/imports/${importId}`);
-        setStatus(response.data);
-        
-        // 如果导入完成或失败，停止轮询
-        if (['completed', 'failed'].includes(response.data.status)) {
-          clearInterval(intervalId);
-          setLoading(false);
-          
-          if (response.data.status === 'completed' && onComplete) {
-            onComplete(response.data);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching import status:', error);
-        setError(error.response?.data?.message || 'Failed to fetch import status');
-        clearInterval(intervalId);
-        setLoading(false);
-      }
-    };
-    
-    // 立即获取一次
-    fetchStatus();
-    
-    // 每3秒轮询一次
-    intervalId = setInterval(fetchStatus, 3000);
-    
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [importId, onComplete]);
+  // Use React Query to poll the import status
+  const { data: status, isLoading, isError, error: queryError } = useQuery({
+    queryKey: ['import-status', importId],
+    queryFn: () => api.get(`/email/imports/${importId}`).then(res => res.data),
+    refetchInterval: status => 
+      (status?.status === 'completed' || status?.status === 'failed') ? false : 3000,
+    enabled: !!importId,
+  });
   
-  // 计算进度百分比
+  // Call onComplete when import finishes
+  useEffect(() => {
+    if (status && ['completed', 'failed'].includes(status.status)) {
+      if (status.status === 'completed' && onComplete) {
+        onComplete(status);
+      }
+    }
+  }, [status, onComplete]);
+  
+  // Calculate progress percentage
   const calculateProgress = () => {
-    if (!status) return 0;
+    if (!status || status.emails_processed === 0) return 0;
     
-    // 如果总数为0，则进度为0
-    if (status.emails_processed === 0) return 0;
+    // If we have more than 20 emails processed, show progress based on that
+    if (status.emails_processed > 20) {
+      // Assume we're halfway through at 50 emails
+      const estimatedTotal = 100;
+      return Math.min(100, Math.round((status.emails_processed / estimatedTotal) * 100));
+    }
     
-    // 这里假设我们有一个预计的总邮件数，实际中可能需要调整
-    const estimatedTotal = 100; // 假设值
-    const progress = Math.min(100, Math.round((status.emails_processed / estimatedTotal) * 100));
-    
-    return progress;
+    // Otherwise, use indeterminate progress for the first 20 emails
+    return Math.min(100, status.emails_processed * 5); // 5% per email
   };
   
-  if (error) {
+  // Format relative time for how long the import has been running
+  const getImportDuration = () => {
+    if (!status || !status.started_at) return 'Just started';
+    
+    const startTime = new Date(status.started_at);
+    const endTime = status.completed_at ? new Date(status.completed_at) : new Date();
+    
+    // Calculate duration in seconds
+    const durationSeconds = Math.floor((endTime - startTime) / 1000);
+    
+    if (durationSeconds < 60) {
+      return `${durationSeconds} seconds`;
+    } else if (durationSeconds < 3600) {
+      const minutes = Math.floor(durationSeconds / 60);
+      return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    } else {
+      const hours = Math.floor(durationSeconds / 3600);
+      const minutes = Math.floor((durationSeconds % 3600) / 60);
+      return `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="bg-white shadow-md rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4">Starting Analysis...</h2>
+        <div className="flex justify-center">
+          <span className="loading loading-spinner loading-lg"></span>
+        </div>
+      </div>
+    );
+  }
+  
+  if (isError || error) {
     return (
       <div className="alert alert-error">
-        <span>{error}</span>
+        <span>{error || queryError?.message || 'Error fetching import status'}</span>
       </div>
     );
   }
@@ -68,10 +83,10 @@ export default function ImportProgress({ importId, onComplete }) {
     <div className="bg-white shadow-md rounded-lg p-6">
       <h2 className="text-xl font-semibold mb-4">Analyzing Your Emails</h2>
       
-      <div className="mb-4">
+      <div className="mb-6">
         <div className="flex justify-between mb-1">
-          <span>Scanning for subscriptions...</span>
-          <span>{status?.status || 'Starting...'}</span>
+          <span className="font-medium">Status: {status?.status === 'in_progress' ? 'In Progress' : status?.status}</span>
+          <span className="text-gray-500">Running for: {getImportDuration()}</span>
         </div>
         <progress 
           className="progress progress-primary w-full" 
@@ -80,36 +95,75 @@ export default function ImportProgress({ importId, onComplete }) {
         ></progress>
       </div>
       
-      <div className="stats shadow w-full">
-        <div className="stat">
-          <div className="stat-title">Emails Analyzed</div>
-          <div className="stat-value">{status?.emails_processed || 0}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="stats shadow">
+          <div className="stat">
+            <div className="stat-title">Emails Analyzed</div>
+            <div className="stat-value">{status?.emails_processed || 0}</div>
+            <div className="stat-desc">
+              {status?.status === 'in_progress' ? 'Scanning through your inbox...' : ''}
+            </div>
+          </div>
         </div>
         
-        <div className="stat">
-          <div className="stat-title">Subscriptions Found</div>
-          <div className="stat-value">{status?.subscriptions_found || 0}</div>
+        <div className="stats shadow">
+          <div className="stat">
+            <div className="stat-title">Subscriptions Found</div>
+            <div className="stat-value">{status?.subscriptions_found || 0}</div>
+            <div className="stat-desc">
+              {status?.status === 'completed' ? 'Ready for review' : 'Detecting subscription patterns...'}
+            </div>
+          </div>
         </div>
       </div>
       
       {status?.status === 'completed' ? (
-        <div className="alert alert-success mt-4">
+        <div className="alert alert-success mt-6">
           <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Analysis complete! We found {status.subscriptions_found} subscriptions.</span>
+          <div>
+            <h3 className="font-bold">Analysis Complete!</h3>
+            <div className="text-sm">
+              We found {status.subscriptions_found} subscription{status.subscriptions_found !== 1 ? 's' : ''}.
+              {status.subscriptions_found > 0 ? ' Continue to review them.' : ' Try connecting a different email or adding subscriptions manually.'}
+            </div>
+          </div>
+          {status.subscriptions_found > 0 && (
+            <button 
+              className="btn btn-sm btn-primary"
+              onClick={() => onComplete && onComplete(status)}
+            >
+              Review Subscriptions
+            </button>
+          )}
         </div>
       ) : status?.status === 'failed' ? (
-        <div className="alert alert-error mt-4">
+        <div className="alert alert-error mt-6">
           <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Error: {status.error_message || 'Import failed'}</span>
+          <div>
+            <h3 className="font-bold">Error During Analysis</h3>
+            <div className="text-sm">{status.error_message || 'An unknown error occurred during the import process.'}</div>
+          </div>
+          <button 
+            className="btn btn-sm"
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </button>
         </div>
       ) : (
-        <div className="text-sm text-gray-500 mt-4">
-          <p>This process might take a few minutes. We're scanning your email for subscription receipts and invoices.</p>
-          <p className="mt-2">You can leave this page and come back later - the analysis will continue in the background.</p>
+        <div className="mt-6 bg-base-200 p-4 rounded-lg">
+          <h3 className="font-medium mb-2">What's happening?</h3>
+          <ul className="list-disc list-inside space-y-2 text-sm text-gray-600">
+            <li>We're scanning your inbox for emails related to subscriptions</li>
+            <li>Looking for services like Netflix, Spotify, Amazon Prime, etc.</li>
+            <li>Analyzing receipt emails to extract pricing and billing information</li>
+            <li>This process can take a few minutes depending on your email volume</li>
+            <li>You can leave this page and come back - the process will continue</li>
+          </ul>
         </div>
       )}
     </div>

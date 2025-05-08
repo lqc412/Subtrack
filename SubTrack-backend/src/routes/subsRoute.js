@@ -22,4 +22,12 @@ router.delete('/subs/:id', subsController.deleteSubs);
 // GET /subs/search - search subscriptions
 router.get('/subs/search', subsController.searchSubs);
 
+// NEW ENDPOINTS FOR EMAIL INTEGRATION
+
+// GET /subs/recent - get recently detected subscriptions from email
+router.get('/subs/recent', subsController.getRecentSubscriptions);
+
+// POST /subs/batch - create multiple subscriptions at once
+router.post('/subs/batch', subsController.createBatchSubscriptions);
+
 export default router;

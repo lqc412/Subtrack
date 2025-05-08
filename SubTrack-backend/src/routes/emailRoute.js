@@ -4,25 +4,28 @@ import { authenticateToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// 所有路由都需要认证
+// All routes require authentication
 router.use(authenticateToken);
 
-// 获取用户的邮箱连接
+// Get user's email connections
 router.get('/connections', emailController.getUserConnections);
 
-// 获取授权URL
+// Get authorization URL
 router.get('/auth-url', emailController.getAuthUrl);
 
-// 处理OAuth回调
+// Handle OAuth callback
 router.post('/callback', emailController.handleCallback);
 
-// 开始导入邮件
+// Start email import
 router.post('/imports/:connectionId', emailController.startImport);
 
-// 获取导入状态
+// Get import status
 router.get('/imports/:importId', emailController.getImportStatus);
 
-// 删除邮箱连接
+// NEW ENDPOINT: Get recently detected subscriptions
+router.get('/recent-subscriptions', emailController.getRecentSubscriptions);
+
+// Remove email connection
 router.delete('/connections/:connectionId', emailController.removeConnection);
 
 export default router;
