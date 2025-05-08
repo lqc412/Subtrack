@@ -4,9 +4,29 @@ import cookieParser from 'cookie-parser';
 import subsRoute from './routes/subsRoute.js';
 import authRoute from './routes/authRoute.js';
 import userRoute from './routes/userRoute.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const port = process.env.PORT || 3000;
+// 获取当前文件的目录路径
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 创建上传目录（如果不存在）
+import fs from 'fs';
+const uploadsDir = path.join(__dirname, '../uploads');
+const avatarsDir = path.join(uploadsDir, 'avatars');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir);
+}
+
+// 添加静态文件服务
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // CORS configuration
 app.use(cors({

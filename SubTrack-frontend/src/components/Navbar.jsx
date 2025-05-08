@@ -1,4 +1,11 @@
+// 修改 src/components/Navbar.jsx 中的头像显示
+
+import AvatarDisplay from './AvatarDisplay'; // 导入头像组件
+import { useAuth } from '../context/AuthContext';
+
 export default function Navbar({onSearch}){
+  const { currentUser } = useAuth();
+  
   const handleSearchChange = (event) => {
     onSearch(event.target.value);
   }
@@ -13,11 +20,12 @@ export default function Navbar({onSearch}){
             <input type="text" placeholder="Search" onChange={handleSearchChange} className="input input-bordered w-24 md:w-auto" />
             <div className="dropdown dropdown-end">
               <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-                <div className="w-10 rounded-full">
-                  <img
-                    alt="Tailwind CSS Navbar component"
-                    src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp" />
-                </div>
+                {/* 替换为AvatarDisplay组件 */}
+                <AvatarDisplay 
+                  src={currentUser?.profile_image}
+                  username={currentUser?.username || 'User'}
+                  size="sm" 
+                />
               </div>
               <ul
                  tabIndex={0}
