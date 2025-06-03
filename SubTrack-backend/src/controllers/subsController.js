@@ -1,13 +1,28 @@
+// Enhanced subscription controller with auto-update functionality
+// File: SubTrack-backend/src/controllers/subsController.js
+
 import * as subsService from '../services/subsServices.js';
+import { query } from '../db.js';
 
 /**
- * Get all subscriptions for the authenticated user
+ * Get all subscriptions for the authenticated user with auto-update
  */
 export const getSubs = async (req, res) => {
   try {
     const userId = req.user.id;
     const subs = await subsService.getSubs(userId);
-    res.status(200).json(subs);
+    
+    // Add metadata about any auto-updates that occurred
+    const response = {
+      subscriptions: subs,
+      metadata: {
+        totalCount: subs.length,
+        activeCount: subs.filter(sub => sub.is_active).length,
+        lastUpdated: new Date().toISOString()
+      }
+    };
+    
+    res.status(200).json(subs); // Keep backward compatibility, send just the array
   } catch (error) {
     console.error('Error fetching subscriptions:', error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -22,7 +37,7 @@ export const createSubs = async (req, res) => {
     const userId = req.user.id;
     const subsData = { ...req.body, user_id: userId };
     const newSubs = await subsService.createSubs(subsData);
-    res.status(200).json(newSubs);
+    res.status(201).json(newSubs);
   } catch (error) {
     console.error('Error creating subscription:', error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -90,7 +105,7 @@ export const deleteSubs = async (req, res) => {
 };
 
 /**
- * Search subscriptions for the authenticated user
+ * Search subscriptions for the authenticated user with auto-update
  */
 export const searchSubs = async (req, res) => {
   try {
@@ -100,6 +115,142 @@ export const searchSubs = async (req, res) => {
     res.status(200).json(subs);
   } catch (error) {
     console.error('Error searching subscriptions:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Get upcoming subscriptions (due within specified days) with auto-update
+ */
+export const getUpcomingSubs = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const days = parseInt(req.query.days) || 30;
+    
+    const upcomingSubs = await subsService.getUpcomingSubscriptions(userId, days);
+    
+    res.status(200).json({
+      subscriptions: upcomingSubs,
+      metadata: {
+        daysRange: days,
+        count: upcomingSubs.length,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching upcoming subscriptions:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Get subscription statistics with auto-update
+ */
+export const getSubsStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const stats = await subsService.getSubscriptionStats(userId);
+    
+    res.status(200).json({
+      ...stats,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching subscription statistics:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Get subscriptions grouped by category with auto-update
+ */
+export const getSubsByCategory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const categoryData = await subsService.getSubscriptionsByCategory(userId);
+    
+    res.status(200).json({
+      categories: categoryData,
+      metadata: {
+        totalCategories: categoryData.length,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching subscriptions by category:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Manually trigger date updates for user's subscriptions
+ */
+export const updateSubDates = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get all user's subscriptions
+    const subscriptions = await query(
+      'SELECT * FROM subscriptions WHERE user_id = $1 AND is_active = true',
+      [userId]
+    );
+    
+    if (subscriptions.rows.length === 0) {
+      return res.status(200).json({
+        message: 'No active subscriptions found',
+        updated: 0
+      });
+    }
+    
+    // Check and update overdue subscriptions
+    let updatedCount = 0;
+    const today = new Date().toISOString().split('T')[0];
+    
+    for (const subscription of subscriptions.rows) {
+      if (subscription.next_billing_date < today) {
+        // Calculate next billing date
+        let nextDate = new Date(subscription.next_billing_date);
+        const currentDate = new Date();
+        
+        // Keep advancing until future date
+        while (nextDate < currentDate) {
+          switch (subscription.billing_cycle) {
+            case 'daily':
+              nextDate.setDate(nextDate.getDate() + 1);
+              break;
+            case 'weekly':
+              nextDate.setDate(nextDate.getDate() + 7);
+              break;
+            case 'monthly':
+              nextDate.setMonth(nextDate.getMonth() + 1);
+              break;
+            case 'yearly':
+              nextDate.setFullYear(nextDate.getFullYear() + 1);
+              break;
+            default:
+              nextDate.setMonth(nextDate.getMonth() + 1);
+          }
+        }
+        
+        // Update in database
+        await query(
+          'UPDATE subscriptions SET next_billing_date = $1 WHERE id = $2',
+          [nextDate.toISOString().split('T')[0], subscription.id]
+        );
+        
+        updatedCount++;
+      }
+    }
+    
+    res.status(200).json({
+      message: `Successfully updated ${updatedCount} subscription dates`,
+      updated: updatedCount,
+      total: subscriptions.rows.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error updating subscription dates:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
@@ -176,7 +327,9 @@ export const getRecentSubscriptions = async (req, res) => {
   }
 };
 
-// Add this function to add subscriptions in batch (for the import functionality)
+/**
+ * Add subscriptions in batch (for the import functionality)
+ */
 export const createBatchSubscriptions = async (req, res) => {
   try {
     const userId = req.user.id;

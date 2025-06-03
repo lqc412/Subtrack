@@ -32,15 +32,18 @@ export default function MainLayout() {
             <span className="text-xl font-bold">SubTrack</span>
           </div>
           
-          <div className="flex-none">
+          <div className="flex-none mr-4">
             <div className="dropdown dropdown-end">
-              <label tabIndex={0} className="btn btn-ghost btn-circle avatar">
-                <AvatarDisplay 
-                  src={currentUser?.profile_image} 
-                  username={currentUser?.username} 
-                  size="md"
-                />
-              </label>
+              <div tabIndex={0} className="avatar cursor-pointer">
+                <div className="w-10 h-10 rounded-full border-2 border-gray-300 overflow-hidden">
+                  <img 
+                    src={currentUser?.profile_image || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.username || 'User')}&background=random`}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    style={{ objectFit: 'cover' }}
+                  />
+                </div>
+              </div>
               <ul tabIndex={0} className="mt-3 p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
                 <li><a onClick={() => navigate('/settings')}>Profile</a></li>
                 <li><a onClick={handleLogout}>Logout</a></li>
