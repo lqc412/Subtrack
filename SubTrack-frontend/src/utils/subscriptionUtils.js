@@ -1,6 +1,9 @@
-// src/utils/subscriptionUtils.js
+// Frontend: Enhanced subscription utilities with auto-update support
+// File: SubTrack-frontend/src/utils/subscriptionUtils.js
+
 /**
  * Utility functions for managing subscription dates and billing cycles
+ * Note: These functions work with the backend auto-update system
  */
 
 /**
@@ -68,64 +71,95 @@ export const getDaysUntilBilling = (billingDate) => {
 };
 
 /**
- * Update a subscription's next billing date if it has passed
+ * Preview what the next billing date would be (client-side calculation)
+ * Used for UI feedback before API calls
  * @param {Object} subscription - The subscription object
- * @returns {Object} Updated subscription object
+ * @returns {Object} Subscription with predicted next date
  */
-export const updateSubscriptionIfNeeded = (subscription) => {
+export const previewNextBillingDate = (subscription) => {
   if (!subscription.is_active) {
     return subscription;
   }
   
-  let updatedSubscription = { ...subscription };
   let currentBillingDate = subscription.next_billing_date;
   
   // Keep advancing the date until it's in the future
   while (isBillingDatePassed(currentBillingDate)) {
     currentBillingDate = calculateNextBillingDate(currentBillingDate, subscription.billing_cycle);
-    updatedSubscription.next_billing_date = currentBillingDate;
-    updatedSubscription.needs_backend_update = true; // Flag for API update
   }
   
-  return updatedSubscription;
+  return {
+    ...subscription,
+    next_billing_date: currentBillingDate,
+    was_updated: currentBillingDate !== subscription.next_billing_date
+  };
 };
 
 /**
- * Process an array of subscriptions and update dates as needed
+ * Process an array of subscriptions and preview date updates
+ * Used for immediate UI feedback while API updates happen in background
  * @param {Array} subscriptions - Array of subscription objects
- * @returns {Object} { updatedSubscriptions, needsUpdate: boolean }
+ * @returns {Object} { processedSubscriptions, hasUpdates: boolean }
  */
-export const processSubscriptions = (subscriptions) => {
+export const previewSubscriptionUpdates = (subscriptions) => {
   if (!subscriptions || !Array.isArray(subscriptions)) {
-    return { updatedSubscriptions: [], needsUpdate: false };
+    return { processedSubscriptions: [], hasUpdates: false };
   }
   
-  let needsUpdate = false;
-  const updatedSubscriptions = subscriptions.map(sub => {
-    const updated = updateSubscriptionIfNeeded(sub);
-    if (updated.needs_backend_update) {
-      needsUpdate = true;
+  let hasUpdates = false;
+  const processedSubscriptions = subscriptions.map(sub => {
+    const preview = previewNextBillingDate(sub);
+    if (preview.was_updated) {
+      hasUpdates = true;
     }
-    return updated;
+    return preview;
   });
   
-  return { updatedSubscriptions, needsUpdate };
+  return { processedSubscriptions, hasUpdates };
 };
 
 /**
- * Format days until billing for display
+ * Format days until billing for display with contextual styling
  * @param {number} days - Days until billing
- * @returns {string} Formatted string
+ * @returns {Object} { text: string, urgent: boolean, overdue: boolean }
  */
 export const formatDaysUntilBilling = (days) => {
   if (days < 0) {
-    return `${Math.abs(days)} days overdue`;
+    return {
+      text: `${Math.abs(days)} days overdue`,
+      urgent: true,
+      overdue: true
+    };
   } else if (days === 0) {
-    return 'Today';
+    return {
+      text: 'Due today',
+      urgent: true,
+      overdue: false
+    };
   } else if (days === 1) {
-    return 'Tomorrow';
+    return {
+      text: 'Due tomorrow',
+      urgent: true,
+      overdue: false
+    };
+  } else if (days <= 3) {
+    return {
+      text: `Due in ${days} days`,
+      urgent: true,
+      overdue: false
+    };
+  } else if (days <= 7) {
+    return {
+      text: `${days} days`,
+      urgent: false,
+      overdue: false
+    };
   } else {
-    return `${days} days`;
+    return {
+      text: `${days} days`,
+      urgent: false,
+      overdue: false
+    };
   }
 };
 
@@ -144,4 +178,167 @@ export const getBillingBadgeColor = (days) => {
   } else {
     return 'badge-success'; // Due later
   }
+};
+
+/**
+ * Get status indicator for subscription billing
+ * @param {Object} subscription - Subscription object
+ * @returns {Object} Status object with display info
+ */
+export const getSubscriptionStatus = (subscription) => {
+  if (!subscription.is_active) {
+    return {
+      status: 'inactive',
+      text: 'Inactive',
+      badgeClass: 'badge-ghost',
+      days: null
+    };
+  }
+  
+  const days = getDaysUntilBilling(subscription.next_billing_date);
+  const formatted = formatDaysUntilBilling(days);
+  
+  return {
+    status: formatted.overdue ? 'overdue' : formatted.urgent ? 'urgent' : 'normal',
+    text: formatted.text,
+    badgeClass: getBillingBadgeColor(days),
+    days: days,
+    urgent: formatted.urgent,
+    overdue: formatted.overdue
+  };
+};
+
+/**
+ * Calculate total monthly cost for subscriptions
+ * @param {Array} subscriptions - Array of subscription objects
+ * @param {boolean} activeOnly - Only include active subscriptions
+ * @returns {number} Total monthly cost
+ */
+export const calculateMonthlyTotal = (subscriptions, activeOnly = true) => {
+  if (!subscriptions || !Array.isArray(subscriptions)) {
+    return 0;
+  }
+  
+  return subscriptions
+    .filter(sub => !activeOnly || sub.is_active)
+    .reduce((total, sub) => {
+      const amount = parseFloat(sub.amount) || 0;
+      
+      switch (sub.billing_cycle) {
+        case 'daily':
+          return total + (amount * 30.44); // Average days per month
+        case 'weekly':
+          return total + (amount * 4.33); // Average weeks per month
+        case 'monthly':
+          return total + amount;
+        case 'yearly':
+          return total + (amount / 12);
+        default:
+          return total + amount; // Default to monthly
+      }
+    }, 0);
+};
+
+/**
+ * Calculate total yearly cost for subscriptions
+ * @param {Array} subscriptions - Array of subscription objects
+ * @param {boolean} activeOnly - Only include active subscriptions
+ * @returns {number} Total yearly cost
+ */
+export const calculateYearlyTotal = (subscriptions, activeOnly = true) => {
+  if (!subscriptions || !Array.isArray(subscriptions)) {
+    return 0;
+  }
+  
+  return subscriptions
+    .filter(sub => !activeOnly || sub.is_active)
+    .reduce((total, sub) => {
+      const amount = parseFloat(sub.amount) || 0;
+      
+      switch (sub.billing_cycle) {
+        case 'daily':
+          return total + (amount * 365);
+        case 'weekly':
+          return total + (amount * 52);
+        case 'monthly':
+          return total + (amount * 12);
+        case 'yearly':
+          return total + amount;
+        default:
+          return total + (amount * 12); // Default to monthly
+      }
+    }, 0);
+};
+
+/**
+ * Group subscriptions by their billing urgency
+ * @param {Array} subscriptions - Array of subscription objects
+ * @returns {Object} Grouped subscriptions
+ */
+export const groupSubscriptionsByUrgency = (subscriptions) => {
+  if (!subscriptions || !Array.isArray(subscriptions)) {
+    return {
+      overdue: [],
+      urgent: [],
+      normal: [],
+      inactive: []
+    };
+  }
+  
+  const groups = {
+    overdue: [],
+    urgent: [],
+    normal: [],
+    inactive: []
+  };
+  
+  subscriptions.forEach(sub => {
+    const status = getSubscriptionStatus(sub);
+    groups[status.status].push({
+      ...sub,
+      statusInfo: status
+    });
+  });
+  
+  // Sort each group by billing date
+  Object.keys(groups).forEach(key => {
+    if (key !== 'inactive') {
+      groups[key].sort((a, b) => 
+        new Date(a.next_billing_date) - new Date(b.next_billing_date)
+      );
+    }
+  });
+  
+  return groups;
+};
+
+/**
+ * Check if subscriptions need a refresh from the server
+ * This can be used to trigger API calls when dates might be stale
+ * @param {Array} subscriptions - Array of subscription objects
+ * @param {number} staleThresholdHours - Hours after which to consider data stale
+ * @returns {boolean} True if refresh is recommended
+ */
+export const shouldRefreshSubscriptions = (subscriptions, staleThresholdHours = 24) => {
+  if (!subscriptions || !Array.isArray(subscriptions)) {
+    return true;
+  }
+  
+  // Check if any subscription has a past due date
+  const hasOverdueSubscriptions = subscriptions.some(sub => 
+    sub.is_active && getDaysUntilBilling(sub.next_billing_date) < 0
+  );
+  
+  if (hasOverdueSubscriptions) {
+    return true;
+  }
+  
+  // Check if data is stale (you'd need to track fetch time)
+  // This is a placeholder for cache invalidation logic
+  const now = new Date();
+  const staleTime = new Date(now.getTime() - (staleThresholdHours * 60 * 60 * 1000));
+  
+  // If you store fetch timestamp, compare it here
+  // For now, we'll assume fresh data
+  return false;
 };
