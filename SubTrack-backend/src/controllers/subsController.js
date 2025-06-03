@@ -103,3 +103,131 @@ export const searchSubs = async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
+
+/**
+ * Get recently detected subscriptions from email
+ */
+export const getRecentSubscriptions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { importId } = req.query;
+    
+    if (!importId) {
+      return res.status(400).json({ message: 'Import ID is required' });
+    }
+    
+    // Get the import log to verify it belongs to the user
+    const importLogQuery = await query(
+      'SELECT * FROM email_import_logs WHERE id = $1 AND user_id = $2',
+      [importId, userId]
+    );
+    
+    if (importLogQuery.rows.length === 0) {
+      return res.status(404).json({ message: 'Import log not found' });
+    }
+    
+    const importLog = importLogQuery.rows[0];
+    
+    // Mock data for testing - in a real implementation, you would have saved these
+    // during the email parsing process with a reference to the import ID
+    const mockDetectedSubscriptions = [
+      {
+        company: 'Netflix',
+        category: 'Entertainment',
+        billing_cycle: 'monthly',
+        next_billing_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        amount: 15.99,
+        currency: 'USD',
+        notes: 'Detected from email',
+        is_active: true,
+        source: 'email',
+        source_id: `email_import_${importId}_1`
+      },
+      {
+        company: 'Spotify',
+        category: 'Entertainment',
+        billing_cycle: 'monthly',
+        next_billing_date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        amount: 9.99,
+        currency: 'USD',
+        notes: 'Detected from email',
+        is_active: true,
+        source: 'email',
+        source_id: `email_import_${importId}_2`
+      },
+      {
+        company: 'Adobe Creative Cloud',
+        category: 'Productivity',
+        billing_cycle: 'monthly',
+        next_billing_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        amount: 52.99,
+        currency: 'USD',
+        notes: 'Detected from email',
+        is_active: true,
+        source: 'email',
+        source_id: `email_import_${importId}_3`
+      }
+    ];
+    
+    res.status(200).json(mockDetectedSubscriptions);
+  } catch (error) {
+    console.error('Error fetching recent subscriptions:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+// Add this function to add subscriptions in batch (for the import functionality)
+export const createBatchSubscriptions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { subscriptions } = req.body;
+    
+    if (!subscriptions || !Array.isArray(subscriptions) || subscriptions.length === 0) {
+      return res.status(400).json({ message: 'Valid subscriptions array is required' });
+    }
+    
+    // Process each subscription
+    const results = [];
+    for (const subscription of subscriptions) {
+      // Add user_id to each subscription if not already present
+      if (!subscription.user_id) {
+        subscription.user_id = userId;
+      }
+      
+      // Validate that this user can only add subscriptions for themselves
+      if (subscription.user_id !== userId) {
+        return res.status(403).json({ 
+          message: 'You can only add subscriptions for your own account' 
+        });
+      }
+      
+      // Insert the subscription
+      const result = await query(
+        `INSERT INTO subscriptions 
+         (user_id, company, category, billing_cycle, next_billing_date, amount, currency, notes, is_active, source, source_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+         RETURNING *`,
+        [
+          subscription.user_id,
+          subscription.company,
+          subscription.category,
+          subscription.billing_cycle,
+          subscription.next_billing_date,
+          subscription.amount,
+          subscription.currency,
+          subscription.notes,
+          subscription.is_active !== undefined ? subscription.is_active : true,
+          subscription.source || 'manual',
+          subscription.source_id || null
+        ]
+      );
+      
+      results.push(result.rows[0]);
+    }
+    
+    res.status(201).json(results);
+  } catch (error) {
+    console.error('Error creating batch subscriptions:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};

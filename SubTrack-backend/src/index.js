@@ -6,6 +6,7 @@ import authRoute from './routes/authRoute.js';
 import userRoute from './routes/userRoute.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import emailRoute from './routes/emailRoute.js';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -42,6 +43,7 @@ app.use(cookieParser());
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute);
 app.use('/api', subsRoute);
+app.use('/api/email', emailRoute);
 
 // Root route - health check
 app.get('/', (req, res) => {

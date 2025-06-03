@@ -12,6 +12,8 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import SettingsPage from './pages/SettingsPage';
+import EmailIntegrationPage  from './pages/EmailIntegrationPage'
+import EmailCallbackPage  from './pages/EmailCallbackPage'
 
 // Import layout
 import MainLayout from './components/layout/MainLayout';
@@ -118,6 +120,14 @@ function App() {
                 </div>
               </div>
             } />
+            <Route path="/email-integration" element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<EmailIntegrationPage />} />
+            </Route>
+            <Route path="/email/callback" element={<EmailCallbackPage />} />
           </Routes>
         </AuthProvider>
       </Router>

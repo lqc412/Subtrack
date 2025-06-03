@@ -8,6 +8,7 @@
     "cookie-parser": "^1.4.7",
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.503.0"
+    "lucide-react": "^0.503.0",
+    "recharts": "^2.15.3"
   }
 }

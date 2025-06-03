@@ -1,11 +1,8 @@
-// 修改 src/components/layout/MainLayout.jsx 中使用复合UserAvatar组件
-// 替换之前直接使用AvatarDisplay的位置
-
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Home, CreditCard, Settings } from 'lucide-react';
-import AvatarDisplay from '../AvatarDisplay'; // 保留基础头像组件
-import UserAvatar from '../UserAvatar'; // 导入复合用户头像组件
+import { Home, CreditCard, Settings, Mail } from 'lucide-react';
+import AvatarDisplay from '../AvatarDisplay'; 
+import UserAvatar from '../UserAvatar'; 
 
 export default function MainLayout() {
   const { currentUser, logout } = useAuth();
@@ -81,6 +78,12 @@ export default function MainLayout() {
                   Subscriptions
                 </NavLink>
               </li>
+              <li>
+              <NavLink to="/email-integration" className={({ isActive }) => isActive ? 'active' : ''}>
+                <Mail size={18} />
+                Email Integration
+              </NavLink>
+            </li>
               <li>
                 <NavLink to="/settings" className={({ isActive }) => isActive ? 'active' : ''}>
                   <Settings size={18} />

@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { CalendarDays, TrendingUp, ArrowRight } from 'lucide-react';
+import { CalendarDays, TrendingUp, ArrowRight, BarChart3, PieChart } from 'lucide-react';
 import api from '../services/api';
+import CategoryChart from '../components/dashboard/CategoryChart';
+import CategorySummary from '../components/dashboard/CategorySummary';
 
 export default function DashboardPage() {
   const { data: subscriptions, isLoading, error } = useQuery({
@@ -13,19 +15,32 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalMonthly: 0,
     totalYearly: 0,
-    upcomingPayments: []
+    upcomingPayments: [],
+    activeSubscriptions: 0,
+    totalCategories: 0
   });
+  
+  // State for chart view toggle
+  const [chartView, setChartView] = useState('pie'); // 'pie' or 'bar'
   
   useEffect(() => {
     if (subscriptions) {
       // Calculate total costs
       let monthly = 0;
       let yearly = 0;
+      let activeCount = 0;
+      const categories = new Set();
       
       subscriptions.forEach(sub => {
         if (!sub.is_active) return;
         
+        activeCount++;
         const amount = parseFloat(sub.amount);
+        
+        // Add category to set
+        if (sub.category) {
+          categories.add(sub.category);
+        }
         
         switch(sub.billing_cycle) {
           case 'monthly':
@@ -60,7 +75,9 @@ export default function DashboardPage() {
       setStats({
         totalMonthly: monthly.toFixed(2),
         totalYearly: yearly.toFixed(2),
-        upcomingPayments: upcoming
+        upcomingPayments: upcoming,
+        activeSubscriptions: activeCount,
+        totalCategories: categories.size
       });
     }
   }, [subscriptions]);
@@ -94,7 +111,7 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-bold">Dashboard</h1>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="stat bg-base-100 shadow rounded-lg">
           <div className="stat-title">Total Monthly Cost</div>
           <div className="stat-value text-primary">{formatCurrency(stats.totalMonthly)}</div>
@@ -105,6 +122,18 @@ export default function DashboardPage() {
           <div className="stat-title">Annual Spending</div>
           <div className="stat-value">{formatCurrency(stats.totalYearly)}</div>
           <div className="stat-desc">Projected yearly total</div>
+        </div>
+        
+        <div className="stat bg-base-100 shadow rounded-lg">
+          <div className="stat-title">Active Subscriptions</div>
+          <div className="stat-value">{stats.activeSubscriptions}</div>
+          <div className="stat-desc">Currently paying for</div>
+        </div>
+        
+        <div className="stat bg-base-100 shadow rounded-lg">
+          <div className="stat-title">Categories</div>
+          <div className="stat-value">{stats.totalCategories}</div>
+          <div className="stat-desc">Different service types</div>
         </div>
       </div>
       
@@ -122,7 +151,9 @@ export default function DashboardPage() {
         
         {stats.upcomingPayments.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No upcoming payments in the next 30 days
+            <CalendarDays size={48} className="mx-auto mb-4 opacity-50" />
+            <p className="text-lg mb-2">No upcoming payments in the next 30 days</p>
+            <p className="text-sm">All caught up! Your next payments are further out.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -132,18 +163,27 @@ export default function DashboardPage() {
                   <th>Service</th>
                   <th>Date</th>
                   <th>Amount</th>
+                  <th>Days Until</th>
                 </tr>
               </thead>
               <tbody>
-                {stats.upcomingPayments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td className="font-medium">{payment.company}</td>
-                    <td>{formatDate(payment.next_billing_date)}</td>
-                    <td className="font-medium">
-                      {formatCurrency(payment.amount, payment.currency)}
-                    </td>
-                  </tr>
-                ))}
+                {stats.upcomingPayments.map((payment) => {
+                  const daysUntil = Math.ceil((new Date(payment.next_billing_date) - new Date()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <tr key={payment.id}>
+                      <td className="font-medium">{payment.company}</td>
+                      <td>{formatDate(payment.next_billing_date)}</td>
+                      <td className="font-medium">
+                        {formatCurrency(payment.amount, payment.currency)}
+                      </td>
+                      <td>
+                        <span className={`badge ${daysUntil <= 3 ? 'badge-error' : daysUntil <= 7 ? 'badge-warning' : 'badge-success'}`}>
+                          {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `${daysUntil} days`}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -157,72 +197,50 @@ export default function DashboardPage() {
             <TrendingUp size={20} className="text-primary" />
             Subscription Categories
           </h2>
+          <div className="flex gap-2">
+            <button 
+              className={`btn btn-sm ${chartView === 'pie' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setChartView('pie')}
+              title="Pie Chart View"
+            >
+              <PieChart size={16} />
+            </button>
+            <button 
+              className={`btn btn-sm ${chartView === 'bar' ? 'btn-primary' : 'btn-outline'}`}
+              onClick={() => setChartView('bar')}
+              title="Bar Chart View"
+            >
+              <BarChart3 size={16} />
+            </button>
+          </div>
         </div>
         
         {!subscriptions || subscriptions.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            No subscriptions found
+            <TrendingUp size={48} className="mx-auto mb-4 opacity-50" />
+            <p className="text-lg mb-2">No subscriptions found</p>
+            <p className="text-sm">Add some subscriptions to see category breakdown</p>
+            <Link to="/subscriptions" className="btn btn-primary btn-sm mt-4">
+              Add Subscription
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Category distribution chart could go here */}
-            <div className="h-64 flex items-center justify-center bg-base-200 rounded-lg">
-              <p className="text-gray-500">Category distribution chart</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Chart */}
+            <div className="flex flex-col">
+              <h3 className="font-semibold mb-3">
+                {chartView === 'pie' ? 'Distribution' : 'Spending by Category'}
+              </h3>
+              <CategoryChart subscriptions={subscriptions} viewType={chartView} />
             </div>
             
-            {/* Top categories list */}
-            <div className="space-y-4">
-              <h3 className="font-bold">Top Categories</h3>
-              {Object.entries(getCategoryCosts(subscriptions))
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 5)
-                .map(([category, amount]) => (
-                  <div key={category} className="flex justify-between items-center">
-                    <span className="capitalize">{category || 'Uncategorized'}</span>
-                    <span className="font-medium">{formatCurrency(amount)}</span>
-                  </div>
-                ))}
+            {/* Category Summary */}
+            <div className="flex flex-col">
+              <CategorySummary subscriptions={subscriptions} limit={5} />
             </div>
           </div>
         )}
       </div>
     </div>
   );
-}
-
-// Helper function to calculate costs by category
-function getCategoryCosts(subscriptions) {
-  const categoryCosts = {};
-  
-  subscriptions.forEach(sub => {
-    if (!sub.is_active) return;
-    
-    const category = sub.category || 'Uncategorized';
-    const amount = parseFloat(sub.amount);
-    
-    if (!categoryCosts[category]) {
-      categoryCosts[category] = 0;
-    }
-    
-    // Convert all to monthly cost for comparison
-    let monthlyCost = 0;
-    switch(sub.billing_cycle) {
-      case 'monthly':
-        monthlyCost = amount;
-        break;
-      case 'yearly':
-        monthlyCost = amount / 12;
-        break;
-      case 'weekly':
-        monthlyCost = amount * 4.33;
-        break;
-      case 'daily':
-        monthlyCost = amount * 30.44;
-        break;
-    }
-    
-    categoryCosts[category] += monthlyCost;
-  });
-  
-  return categoryCosts;
 }
