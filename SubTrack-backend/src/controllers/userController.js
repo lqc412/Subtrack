@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 import * as userService from '../services/userServices.js';
 import * as authService from '../services/authServices.js';
 
@@ -131,13 +131,13 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Password reset required. Please contact support.' });
     }
     
-    const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    const isPasswordValid = await js.compare(currentPassword, user.password_hash);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(newPassword, salt);
 
     // Update password
     await userService.updatePassword(userId, hashedPassword);
