@@ -1,14 +1,15 @@
-// Enhanced TableList component with auto-update support
+// Enhanced TableList component with sorting functionality
 // File: SubTrack-frontend/src/components/Tablelist.jsx
 
-import React, { useState, useEffect } from "react";
-import { MoreVertical, RefreshCw, AlertCircle, Clock } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { MoreVertical, RefreshCw, AlertCircle, Clock, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 import CompanyLogo from "./CompanyLogo";
 import api from "../services/api";
 import { 
   getSubscriptionStatus, 
   previewSubscriptionUpdates,
-  shouldRefreshSubscriptions 
+  shouldRefreshSubscriptions,
+  getDaysUntilBilling
 } from "../utils/subscriptionUtils";
 
 export default function TableList({ onOpen, tableData, setTableData, searchTerm }) {
@@ -17,6 +18,12 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [previewData, setPreviewData] = useState([]);
+  
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState({
+    key: 'status_priority', // Default sort by status priority (days until billing)
+    direction: 'asc' // Ascending = most urgent first
+  });
 
   // Apply auto-update preview to current data
   useEffect(() => {
@@ -24,7 +31,6 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
       const { processedSubscriptions, hasUpdates } = previewSubscriptionUpdates(tableData);
       setPreviewData(processedSubscriptions);
       
-      // If we detect updates needed, show a subtle indicator
       if (hasUpdates) {
         console.log('Detected subscriptions with past due dates - consider refreshing');
       }
@@ -35,17 +41,121 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
   useEffect(() => {
     const shouldRefresh = shouldRefreshSubscriptions(tableData);
     if (shouldRefresh) {
-      // Could trigger an automatic refresh here if desired
       console.log('Subscriptions may need refresh due to overdue dates');
     }
   }, [tableData]);
 
-  const filteredData = previewData.filter(
-    (item) =>
-      (item.company && item.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (item.amount && String(item.amount).includes(searchTerm))
+  // Sorting function
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Sort data based on current sort configuration
+  const sortedData = useMemo(() => {
+    if (!previewData || previewData.length === 0) return [];
+    
+    let filteredData = previewData.filter(
+      (item) =>
+        (item.company && item.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.category && item.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.amount && String(item.amount).includes(searchTerm))
+    );
+
+    return [...filteredData].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortConfig.key) {
+        case 'service':
+          aValue = a.company?.toLowerCase() || '';
+          bValue = b.company?.toLowerCase() || '';
+          break;
+          
+        case 'category':
+          aValue = a.category?.toLowerCase() || '';
+          bValue = b.category?.toLowerCase() || '';
+          break;
+          
+        case 'billing_cycle':
+          // Custom order: daily, weekly, monthly, yearly
+          const cycleOrder = { daily: 1, weekly: 2, monthly: 3, yearly: 4 };
+          aValue = cycleOrder[a.billing_cycle] || 5;
+          bValue = cycleOrder[b.billing_cycle] || 5;
+          break;
+          
+        case 'next_billing_date':
+          aValue = new Date(a.next_billing_date);
+          bValue = new Date(b.next_billing_date);
+          break;
+          
+        case 'amount':
+          aValue = parseFloat(a.amount) || 0;
+          bValue = parseFloat(b.amount) || 0;
+          break;
+          
+        case 'status_priority':
+          // Sort by days until billing (most urgent first)
+          const aDays = getDaysUntilBilling(a.next_billing_date);
+          const bDays = getDaysUntilBilling(b.next_billing_date);
+          
+          // Inactive subscriptions go to the end
+          if (!a.is_active && b.is_active) return 1;
+          if (a.is_active && !b.is_active) return -1;
+          if (!a.is_active && !b.is_active) {
+            aValue = a.company?.toLowerCase() || '';
+            bValue = b.company?.toLowerCase() || '';
+            break;
+          }
+          
+          // For active subscriptions, sort by urgency
+          // Overdue (negative days) should come first, then by days ascending
+          if (aDays < 0 && bDays >= 0) return -1;
+          if (aDays >= 0 && bDays < 0) return 1;
+          
+          aValue = aDays;
+          bValue = bDays;
+          break;
+          
+        default:
+          aValue = a[sortConfig.key];
+          bValue = b[sortConfig.key];
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  }, [previewData, searchTerm, sortConfig]);
+
+  // Get sort icon for column headers
+  const getSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return <ArrowUpDown size={14} className="text-gray-400" />;
+    }
+    return sortConfig.direction === 'asc' ? 
+      <ChevronUp size={14} className="text-primary" /> : 
+      <ChevronDown size={14} className="text-primary" />;
+  };
+
+  // Column header component
+  const SortableHeader = ({ sortKey, children, className = "" }) => (
+    <th 
+      className={`cursor-pointer hover:bg-base-200 select-none ${className}`}
+      onClick={() => handleSort(sortKey)}
+    >
+      <div className="flex items-center gap-2">
+        {children}
+        {getSortIcon(sortKey)}
+      </div>
+    </th>
   );
 
   const handleDelete = async (id) => {
@@ -54,7 +164,6 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
         try {
             setIsDeleting(true);
             await api.delete(`/subs/${id}`);
-            // Update local state after successful delete
             setTableData((prevData) => prevData.filter(item => item.id !== id));
             setError(null);
         } catch (err) {
@@ -164,10 +273,18 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
         </div>
       )}
 
-      {/* Refresh controls */}
+      {/* Sorting info and controls */}
       <div className="flex justify-between items-center">
         <div className="text-sm text-gray-500">
-          Last updated: {lastRefresh.toLocaleTimeString()}
+          Last updated: {lastRefresh.toLocaleTimeString()} | 
+          Sorted by: {
+            sortConfig.key === 'status_priority' ? 'Urgency' :
+            sortConfig.key === 'service' ? 'Service' :
+            sortConfig.key === 'category' ? 'Category' :
+            sortConfig.key === 'billing_cycle' ? 'Billing Cycle' :
+            sortConfig.key === 'next_billing_date' ? 'Next Billing Date' :
+            sortConfig.key === 'amount' ? 'Amount' : 'Default'
+          } ({sortConfig.direction === 'asc' ? 'Ascending' : 'Descending'})
         </div>
         <button 
           className="btn btn-sm btn-outline"
@@ -195,17 +312,17 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
           <thead>
             <tr>
               <th>#</th>
-              <th>Service</th>
-              <th>Category</th>
-              <th>Billing Cycle</th>
-              <th>Next Billing Date</th>
-              <th>Amount</th>
-              <th>Status</th>
+              <SortableHeader sortKey="service">Service</SortableHeader>
+              <SortableHeader sortKey="category">Category</SortableHeader>
+              <SortableHeader sortKey="billing_cycle">Billing Cycle</SortableHeader>
+              <SortableHeader sortKey="next_billing_date">Next Billing Date</SortableHeader>
+              <SortableHeader sortKey="amount">Amount</SortableHeader>
+              <SortableHeader sortKey="status_priority">Status</SortableHeader>
               <th></th>
             </tr>
           </thead>
           <tbody className="hover">
-            {filteredData.map((item, index) => {
+            {sortedData.map((item, index) => {
               const status = getSubscriptionStatus(item);
               
               return (
@@ -282,7 +399,7 @@ export default function TableList({ onOpen, tableData, setTableData, searchTerm 
           </tbody>
         </table>
 
-        {filteredData.length === 0 && tableData.length > 0 && (
+        {sortedData.length === 0 && tableData.length > 0 && (
           <div className="text-center py-8 text-gray-500">
             <p>No subscriptions match your search.</p>
           </div>

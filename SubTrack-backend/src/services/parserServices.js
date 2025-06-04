@@ -1,10 +1,14 @@
+// Debug version of parserServices.js with enhanced logging
+// Replace your existing parserServices.js with this version temporarily
+
 import { query } from '../db.js';
 
 export class EmailParser {
-  // 加载所有已知的订阅邮件模板
+  // Load all known subscription email templates
   async loadTemplates() {
     try {
       const { rows } = await query('SELECT * FROM email_templates');
+      console.log(`📧 Loaded ${rows.length} email templates`);
       return rows;
     } catch (error) {
       console.error('Error loading email templates:', error);
@@ -12,7 +16,7 @@ export class EmailParser {
     }
   }
   
-  // 解析邮件头部
+  // Parse email headers
   parseHeaders(headers) {
     const result = {};
     if (!headers || !Array.isArray(headers)) return result;
@@ -24,12 +28,12 @@ export class EmailParser {
     return result;
   }
   
-  // 从Base64编码的内容中获取纯文本
+  // Get plain text from Base64 encoded content
   decodeEmailBody(body) {
     if (!body) return '';
     
     try {
-      // Gmail API 返回的是base64url编码的内容
+      // Gmail API returns base64url encoded content
       const text = Buffer.from(body.data, 'base64').toString('utf-8');
       return text;
     } catch (error) {
@@ -38,19 +42,23 @@ export class EmailParser {
     }
   }
   
-  // 尝试将邮件与已知模板匹配
+  // Try to match email with known templates
   async matchTemplates(email) {
     const templates = await this.loadTemplates();
     const headers = this.parseHeaders(email.payload.headers);
     const sender = headers.from || '';
     const subject = headers.subject || '';
     
-    // 获取正文内容
+    console.log(`🔍 Analyzing email:`);
+    console.log(`  From: ${sender}`);
+    console.log(`  Subject: ${subject}`);
+    
+    // Get email body content
     let bodyText = '';
     if (email.payload.body.size > 0) {
       bodyText = this.decodeEmailBody(email.payload.body);
     } else if (email.payload.parts) {
-      // 处理多部分邮件
+      // Handle multipart emails
       for (const part of email.payload.parts) {
         if (part.mimeType === 'text/plain') {
           bodyText += this.decodeEmailBody(part.body);
@@ -58,21 +66,45 @@ export class EmailParser {
       }
     }
     
-    // 尝试匹配模板
+    console.log(`  Body length: ${bodyText.length} characters`);
+    console.log(`  Body preview: ${bodyText.substring(0, 200)}...`);
+    
+    // Try to match templates
     for (const template of templates) {
-      // 检查发件人是否匹配
-      if (template.sender_pattern && !sender.match(new RegExp(template.sender_pattern, 'i'))) {
+      console.log(`🧪 Testing template: ${template.service_name}`);
+      
+      // Check sender pattern
+      let senderMatch = true;
+      if (template.sender_pattern) {
+        const senderRegex = new RegExp(template.sender_pattern, 'i');
+        senderMatch = senderRegex.test(sender);
+        console.log(`  Sender pattern "${template.sender_pattern}" vs "${sender}": ${senderMatch}`);
+      }
+      
+      if (!senderMatch) {
+        console.log(`  ❌ Sender pattern failed for ${template.service_name}`);
         continue;
       }
       
-      // 检查主题是否匹配
-      if (template.subject_pattern && !subject.match(new RegExp(template.subject_pattern, 'i'))) {
+      // Check subject pattern
+      let subjectMatch = true;
+      if (template.subject_pattern) {
+        const subjectRegex = new RegExp(template.subject_pattern, 'i');
+        subjectMatch = subjectRegex.test(subject);
+        console.log(`  Subject pattern "${template.subject_pattern}" vs "${subject}": ${subjectMatch}`);
+      }
+      
+      if (!subjectMatch) {
+        console.log(`  ❌ Subject pattern failed for ${template.service_name}`);
         continue;
       }
       
-      // 尝试解析正文中的订阅数据
+      // Try to extract data from body
       const extractedData = this.extractDataFromBody(bodyText, template.body_patterns);
+      console.log(`  Extracted data:`, extractedData);
+      
       if (extractedData && Object.keys(extractedData).length > 0) {
+        console.log(`  ✅ Match found with template: ${template.service_name}`);
         return {
           matched: true,
           template: template.service_name,
@@ -83,85 +115,113 @@ export class EmailParser {
             received_at: this.getDateFromHeaders(headers)
           }
         };
+      } else {
+        console.log(`  ❌ Data extraction failed for ${template.service_name}`);
       }
     }
     
+    console.log(`  ❌ No templates matched for this email`);
     return { matched: false };
   }
   
-  // 根据模式从正文中提取数据
+  // Extract data from body using patterns
   extractDataFromBody(body, patterns) {
-    if (!patterns || typeof patterns !== 'object') return null;
+    if (!patterns || typeof patterns !== 'object') {
+      console.log(`  ⚠️  No patterns provided or invalid patterns format`);
+      return null;
+    }
     
     const result = {};
+    console.log(`  🔍 Extracting data with patterns:`, patterns);
     
     for (const [key, patternStr] of Object.entries(patterns)) {
-      const regex = new RegExp(patternStr, 'i');
-      const match = body.match(regex);
-      
-      if (match && match[1]) {
-        result[key] = match[1].trim();
+      try {
+        const regex = new RegExp(patternStr, 'i');
+        const match = body.match(regex);
+        
+        console.log(`    Pattern "${key}": ${patternStr}`);
+        console.log(`    Match result:`, match ? match[0] : 'No match');
+        
+        if (match && match[1]) {
+          result[key] = match[1].trim();
+          console.log(`    ✅ Extracted ${key}: ${result[key]}`);
+        } else {
+          console.log(`    ❌ No match for ${key}`);
+        }
+      } catch (error) {
+        console.error(`    ❌ Regex error for ${key}:`, error.message);
       }
     }
     
-    // 至少应该找到金额或者日期中的一个
-    return (result.amount || result.date) ? result : null;
+    // Should find at least amount or date
+    const hasRequiredData = result.amount || result.date;
+    console.log(`  Required data check (amount or date): ${hasRequiredData}`);
+    
+    return hasRequiredData ? result : null;
   }
   
-  // 从邮件头获取日期
+  // Get date from email headers
   getDateFromHeaders(headers) {
     const date = headers.date || headers['received'] || '';
     return date ? new Date(date) : new Date();
   }
   
-  // 转换成订阅对象
+  // Convert to subscription object
   convertToSubscription(matchResult) {
     if (!matchResult.matched) return null;
     
-    // 处理金额，移除货币符号，转换为数字
+    console.log(`🔄 Converting match result to subscription:`, matchResult);
+    
+    // Handle amount, remove currency symbols, convert to number
     let amount = 0;
     if (matchResult.data.amount) {
-      // 移除所有非数字和小数点的字符
+      // Remove all non-numeric and decimal point characters
       const amountStr = matchResult.data.amount.replace(/[^0-9.]/g, '');
       amount = parseFloat(amountStr);
+      console.log(`  Amount conversion: "${matchResult.data.amount}" -> ${amount}`);
     }
     
-    // 尝试确定货币
-    let currency = 'USD'; // 默认值
+    // Try to determine currency
+    let currency = 'USD'; // Default value
     if (matchResult.data.amount) {
       if (matchResult.data.amount.includes('€')) currency = 'EUR';
       else if (matchResult.data.amount.includes('£')) currency = 'GBP';
       else if (matchResult.data.amount.includes('¥')) currency = 'CNY';
+      console.log(`  Currency detected: ${currency}`);
     }
     
-    // 处理下一个账单日期
+    // Handle next billing date
     let nextBillingDate = null;
     if (matchResult.data.date) {
       try {
         nextBillingDate = new Date(matchResult.data.date);
+        console.log(`  Date conversion: "${matchResult.data.date}" -> ${nextBillingDate}`);
       } catch (e) {
-        // 如果解析失败，使用当前日期加一个月
+        console.log(`  Date parsing failed, using default`);
+        // If parsing fails, use current date plus one month
         nextBillingDate = new Date();
         nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
       }
     } else {
-      // 如果没有日期信息，默认为当前日期加一个月
+      console.log(`  No date found, using default (current + 1 month)`);
+      // If no date info, default to current date plus one month
       nextBillingDate = new Date();
       nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
     }
     
-    // 确定账单周期
-    let billingCycle = 'monthly'; // 默认值
+    // Determine billing cycle
+    let billingCycle = 'monthly'; // Default value
     if (matchResult.data.cycle) {
       const cycleStr = matchResult.data.cycle.toLowerCase();
       if (cycleStr.includes('year')) billingCycle = 'yearly';
       else if (cycleStr.includes('week')) billingCycle = 'weekly';
       else if (cycleStr.includes('day')) billingCycle = 'daily';
+      console.log(`  Billing cycle detected: ${billingCycle}`);
     }
     
-    return {
+    const subscription = {
       company: matchResult.data.service,
-      category: '', // 需要额外逻辑分类
+      category: '', // Needs additional logic for categorization
       billing_cycle: billingCycle,
       next_billing_date: nextBillingDate.toISOString().split('T')[0],
       amount: amount,
@@ -169,6 +229,9 @@ export class EmailParser {
       notes: `Automatically detected from email (ID: ${matchResult.data.email_id})`,
       is_active: true
     };
+    
+    console.log(`✅ Final subscription object:`, subscription);
+    return subscription;
   }
 }
 
