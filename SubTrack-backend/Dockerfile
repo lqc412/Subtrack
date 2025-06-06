@@ -1,5 +1,8 @@
-# Simple Backend Dockerfile - No bcrypt compilation needed
+# Fixed Backend Dockerfile with curl for health checks
 FROM node:18-alpine
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 WORKDIR /app
 
