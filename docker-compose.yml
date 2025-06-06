@@ -1,0 +1,97 @@
+# Secure Docker Compose for SubTrack Application
+# Maintains port consistency with development environment
+# Health checks removed for simplicity
+version: '3.8'
+
+services:
+  # PostgreSQL Database Service
+  database:
+    image: postgres:16-alpine
+    container_name: subtrack-db
+    restart: unless-stopped
+    environment:
+      # Use environment variables from .env file for security
+      POSTGRES_DB: ${POSTGRES_DB:-subtrack}
+      POSTGRES_USER: ${POSTGRES_USER:-subtrack_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - subtrack-network
+
+  # Backend API Service
+  backend:
+    build:
+      context: ./SubTrack-backend
+      dockerfile: Dockerfile
+    container_name: subtrack-backend
+    restart: unless-stopped
+    environment:
+      # Database configuration from environment variables
+      PG_HOST: database
+      PG_PORT: 5432
+      PG_DATABASE: ${POSTGRES_DB:-subtrack}
+      PG_USER: ${POSTGRES_USER:-subtrack_user}
+      PG_PASSWORD: ${POSTGRES_PASSWORD}
+      
+      # Application configuration
+      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-production}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRY: ${JWT_EXPIRY:-7d}
+      
+      # Frontend URL configuration (port consistency)
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      
+      # Google OAuth configuration
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5173/email/callback}
+      
+      # Email configuration (optional)
+      EMAIL_FROM: ${EMAIL_FROM}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    networks:
+      - subtrack-network
+    depends_on:
+      - database
+
+  # Frontend Web Service
+  frontend:
+    build:
+      context: ./SubTrack-frontend
+      dockerfile: Dockerfile
+    container_name: subtrack-frontend
+    restart: unless-stopped
+    environment:
+      # Backend API URL for nginx proxy configuration
+      BACKEND_URL: http://backend:3000
+    ports:
+      # Changed to match development port consistency
+      - "${FRONTEND_PORT:-5173}:80"
+    networks:
+      - subtrack-network
+    depends_on:
+      - backend
+
+# Persistent data volumes
+volumes:
+  postgres_data:
+    driver: local
+
+# Network for secure service communication
+networks:
+  subtrack-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

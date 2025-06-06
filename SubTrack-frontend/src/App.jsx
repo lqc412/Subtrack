@@ -12,6 +12,8 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import SubscriptionsPage from './pages/SubscriptionsPage';
 import SettingsPage from './pages/SettingsPage';
+import EmailIntegrationPage from './pages/EmailIntegrationPage';
+import EmailCallbackPage from './pages/EmailCallbackPage';
 
 // Import layout
 import MainLayout from './components/layout/MainLayout';
@@ -92,7 +94,10 @@ function App() {
               </AuthLayout>
             } />
 
-            {/* Protected routes */}
+            {/* Email callback route - needs to be accessible without full auth flow */}
+            <Route path="/email/callback" element={<EmailCallbackPage />} />
+
+            {/* Protected routes with main layout */}
             <Route path="/" element={
               <ProtectedRoute>
                 <MainLayout />
@@ -100,6 +105,7 @@ function App() {
             }>
               <Route index element={<DashboardPage />} />
               <Route path="subscriptions" element={<SubscriptionsPage />} />
+              <Route path="email-integration" element={<EmailIntegrationPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
 

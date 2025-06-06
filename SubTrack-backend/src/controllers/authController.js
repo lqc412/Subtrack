@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as authService from '../services/authServices.js';
 
@@ -16,8 +16,8 @@ export const register = async (req, res) => {
     }
 
     // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(password, salt);
 
     // Create user
     const newUser = await authService.createUser({
@@ -61,7 +61,7 @@ export const login = async (req, res) => {
     }
 
     // Validate password
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    const isPasswordValid = await bcryptjs.compare(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }

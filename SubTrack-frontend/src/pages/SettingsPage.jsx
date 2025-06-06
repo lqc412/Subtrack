@@ -1,25 +1,83 @@
-import { useState } from 'react';
+// src/pages/SettingsPage.jsx
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, CreditCard, Bell, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { User, CreditCard, Bell, Shield, Upload } from 'lucide-react';
+import api from '../services/api';
+import AvatarDisplay from '../components/AvatarDisplay';
 
 export default function SettingsPage() {
-  const { currentUser, refreshUser } = useAuth();
+  const { currentUser, refreshUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  
+  // Profile data state
   const [profileData, setProfileData] = useState({
     username: currentUser?.username || '',
     email: currentUser?.email || '',
     profile_image: currentUser?.profile_image || ''
   });
+
+  // Update local state when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setProfileData({
+        username: currentUser.username || '',
+        email: currentUser.email || '',
+        profile_image: currentUser.profile_image || ''
+      });
+      setImagePreview(currentUser.profile_image || '');
+    }
+  }, [currentUser]);
+  
+  // File upload state
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(currentUser?.profile_image || '');
+  const fileInputRef = useRef(null);
+  
+  // Preferences state
   const [preferences, setPreferences] = useState({
-    theme_preference: 'light',
-    currency_preference: 'USD',
+    theme_preference: currentUser?.theme_preference || 'light',
+    currency_preference: currentUser?.currency_preference || 'USD',
     notification_preferences: {
-      email_notifications: true,
-      payment_reminders: true
+      email_notifications: currentUser?.notification_preferences?.email_notifications ?? true,
+      payment_reminders: currentUser?.notification_preferences?.payment_reminders ?? true
     }
   });
+  
+  // Security state
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+
+  // Image upload handlers
+  const handleImageClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file is an image
+    if (!file.type.match('image.*')) {
+      setMessage({ type: 'error', text: 'Please select an image file' });
+      return;
+    }
+
+    // Validate file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image size should not exceed 5MB' });
+      return;
+    }
+
+    setProfileImage(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
@@ -27,22 +85,51 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
-      // In a real app, this would call your API
-      // await api.put('/users/profile', profileData);
+      // Create FormData object to handle the file upload
+      const formData = new FormData();
+      formData.append('username', profileData.username);
+      formData.append('email', profileData.email);
       
-      // For demo purposes, simulate a successful update
-      setTimeout(() => {
-        setMessage({ type: 'success', text: 'Profile updated successfully' });
-        setLoading(false);
-      }, 1000);
+      if (profileImage) {
+        formData.append('profile_image', profileImage);
+      } else if (profileData.profile_image) {
+        formData.append('profile_image_url', profileData.profile_image);
+      }
+
+      // Make sure to log the FormData for debugging
+      console.log("Submitting profile update with data:", {
+        username: profileData.username,
+        email: profileData.email,
+        hasProfileImage: !!profileImage,
+        profileImageUrl: profileData.profile_image
+      });
+
+      // Don't set Content-Type header manually - browser will set it correctly with boundary
+      const response = await api.put('/users/profile', formData);
       
-      // Update the user in context
+      // Handle successful response
+      setMessage({ type: 'success', text: 'Profile updated successfully' });
+      
+      // Reset file input after successful upload
+      if (profileImage) {
+        setProfileImage(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+      
+      // Update the user in context with the new data from the server
       refreshUser();
+      
     } catch (error) {
+      // Handle error properly
+      console.error('Error updating profile:', error);
       setMessage({ 
         type: 'error', 
-        text: 'Failed to update profile' 
+        text: error.response?.data?.message || 'Failed to update profile' 
       });
+    } finally {
+      // Always stop loading regardless of success or failure
       setLoading(false);
     }
   };
@@ -53,27 +140,148 @@ export default function SettingsPage() {
     setMessage({ type: '', text: '' });
     
     try {
-      // In a real app, this would call your API
-      // await api.put('/users/preferences', preferences);
+      // Using API instance for preferences
+      const response = await api.put('/users/preferences', preferences);
       
-      // For demo purposes, simulate a successful update
-      setTimeout(() => {
-        setMessage({ type: 'success', text: 'Preferences updated successfully' });
-        setLoading(false);
-      }, 1000);
+      // Handle successful response
+      setMessage({ type: 'success', text: 'Preferences updated successfully' });
+      
+      // Update the user context if needed
+      refreshUser();
+      
     } catch (error) {
+      console.error('Error updating preferences:', error);
       setMessage({ 
         type: 'error', 
-        text: 'Failed to update preferences' 
+        text: error.response?.data?.message || 'Failed to update preferences' 
       });
+    } finally {
       setLoading(false);
     }
   };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    // Password change implementation
-    setMessage({ type: 'success', text: 'Password updated successfully' });
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+    
+    // Validate password match
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      setMessage({ type: 'error', text: 'New passwords do not match' });
+      setLoading(false);
+      return;
+    }
+    
+    // Validate data presence
+    if (!passwordData.current_password || !passwordData.new_password) {
+      setMessage({ type: 'error', text: 'Current password and new password are required' });
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Using consistent naming for request parameters
+      const response = await api.put('/users/password', {
+        currentPassword: passwordData.current_password,
+        newPassword: passwordData.new_password
+      });
+      
+      // Clear password fields
+      setPasswordData({
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+      
+      // Check if server signaled logout is needed
+      if (response.data.logout) {
+        // Show success message briefly before redirecting
+        setMessage({ 
+          type: 'success', 
+          text: 'Password updated successfully. You will be logged out...' 
+        });
+        
+        // Wait a moment for the user to see the message
+        setTimeout(() => {
+          // Log out and redirect to login page
+          logout();
+          navigate('/login');
+        }, 2000);
+      } else {
+        // Regular success message if no logout needed
+        setMessage({ type: 'success', text: 'Password updated successfully' });
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.response?.data?.message || 'Failed to update password' 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handler for password field changes
+  const handlePasswordInputChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Profile image section with enhanced debug info
+  const ProfileImageSection = () => {
+    return (
+      <div className="flex flex-col items-center mb-6">
+        <div 
+          onClick={handleImageClick}
+          className="relative cursor-pointer"
+        >
+          {/* Use AvatarDisplay component with explicit props */}
+          <AvatarDisplay 
+            src={imagePreview || profileData.profile_image}
+            username={profileData.username || 'User'}
+            size="2xl"
+          />
+          
+          {/* Upload hover effect */}
+          <div className="absolute inset-0 rounded-full bg-black bg-opacity-0 hover:bg-opacity-30 flex items-center justify-center transition-all duration-200">
+            <Upload size={24} className="text-white opacity-0 hover:opacity-100" />
+          </div>
+        </div>
+        
+        {/* Hidden file input */}
+        <input 
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          accept="image/*"
+          onChange={handleFileChange}
+        />
+        
+        <button 
+          type="button" 
+          className="btn btn-sm btn-outline mt-2"
+          onClick={handleImageClick}
+        >
+          Change Photo
+        </button>
+        
+        {profileImage && (
+          <p className="text-sm text-gray-500 mt-1">
+            Selected: {profileImage.name}
+          </p>
+        )}
+        
+        {/* Debug info */}
+        <div className="text-xs text-gray-400 mt-1">
+          {imagePreview ? 'Preview URL set' : 'No preview URL'} | 
+          {profileData.profile_image ? ' Profile image URL set' : ' No profile image URL'}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -123,6 +331,9 @@ export default function SettingsPage() {
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <h2 className="text-xl font-bold mb-4">Profile Information</h2>
               
+              {/* Using enhanced avatar component */}
+              {/* <ProfileImageSection /> */}
+              
               <div className="form-control">
                 <label className="label">
                   <span className="label-text">Username</span>
@@ -151,15 +362,26 @@ export default function SettingsPage() {
               
               <div className="form-control">
                 <label className="label">
-                  <span className="label-text">Profile Image URL</span>
+                  <span className="label-text">Profile Image URL (Alternative to upload)</span>
                 </label>
                 <input 
                   type="text" 
                   className="input input-bordered" 
                   value={profileData.profile_image}
-                  onChange={(e) => setProfileData({...profileData, profile_image: e.target.value})}
+                  onChange={(e) => {
+                    setProfileData({...profileData, profile_image: e.target.value});
+                    if (!profileImage && e.target.value) {
+                      setImagePreview(e.target.value);
+                    }
+                  }}
                   placeholder="https://example.com/profile.jpg"
+                  disabled={profileImage !== null}
                 />
+                {profileImage && (
+                  <label className="label">
+                    <span className="label-text-alt text-warning">Disabled while you have an image selected for upload</span>
+                  </label>
+                )}
               </div>
               
               <button 
@@ -286,7 +508,10 @@ export default function SettingsPage() {
                 </label>
                 <input 
                   type="password" 
+                  name="current_password"
                   className="input input-bordered" 
+                  value={passwordData.current_password}
+                  onChange={handlePasswordInputChange}
                   required
                 />
               </div>
@@ -297,7 +522,10 @@ export default function SettingsPage() {
                 </label>
                 <input 
                   type="password" 
+                  name="new_password"
                   className="input input-bordered" 
+                  value={passwordData.new_password}
+                  onChange={handlePasswordInputChange}
                   required
                   minLength={6}
                 />
@@ -312,15 +540,24 @@ export default function SettingsPage() {
                 </label>
                 <input 
                   type="password" 
+                  name="confirm_password"
                   className="input input-bordered" 
+                  value={passwordData.confirm_password}
+                  onChange={handlePasswordInputChange}
                   required
                 />
+                {passwordData.new_password !== passwordData.confirm_password && 
+                 passwordData.confirm_password && (
+                  <label className="label">
+                    <span className="label-text-alt text-error">Passwords do not match</span>
+                  </label>
+                )}
               </div>
               
               <button 
                 type="submit" 
                 className="btn btn-primary"
-                disabled={loading}
+                disabled={loading || (passwordData.new_password !== passwordData.confirm_password && passwordData.confirm_password)}
               >
                 {loading ? (
                   <span className="loading loading-spinner loading-sm"></span>
