@@ -1,145 +1,475 @@
-# SubTrack - Subscription Management App
+# SubTrack - Subscription Management Platform
 
-SubTrack is a full-stack application designed to help users track and manage their recurring subscriptions. Built with modern web technologies, it provides an intuitive interface for monitoring expenses, billing cycles, and upcoming payments.
+A comprehensive full-stack application for tracking and managing your subscriptions with email integration and automatic billing detection.
 
-## 🚀 Features
+![MainPage](./.github/images/MainPage.png)
+![SubsPage](./.github/images/SubsPage.png)
+![EmailPage](./.github/images/EmailPage.png)
+![Detector](./.github/images/Detector.png)
 
-- **Subscription Tracking**: Manage all your recurring subscriptions in one place
-- **Billing Cycles**: Support for daily, weekly, monthly, and yearly billing
-- **Payment Reminders**: Track upcoming billing dates
-- **Currency Support**: Multiple currency options (USD, EUR, GBP, CNY, JPY)
-- **Subscription Status**: Toggle active/inactive subscriptions
-- **Categorization**: Organize subscriptions by category
-- **Search Functionality**: Quickly find specific subscriptions
+## 🌟 Features
 
-## 🛠️ Tech Stack
+### Core Functionality
+- **📊 Subscription Dashboard** - Comprehensive overview of all your subscriptions
+- **💰 Financial Tracking** - Monthly/yearly cost calculations and analytics
+- **📅 Billing Reminders** - Track upcoming payment dates and overdue subscriptions
+- **🏷️ Category Management** - Organize subscriptions by type (Entertainment, Productivity, etc.)
+- **🔄 Auto-Date Updates** - Automatically advance past-due billing dates
 
-### Frontend
-- **React** (v19) - UI library
-- **Vite** - Build tool and development server
-- **Tailwind CSS** - Utility-first CSS framework
-- **DaisyUI** - Component library for Tailwind CSS
+### Email Integration
+- **📧 Gmail Integration** - Connect your Gmail account via OAuth
+- **🤖 Smart Detection** - AI-powered subscription detection from emails
+- **🎯 Pattern Matching** - Support for 30+ popular services (Netflix, Spotify, Amazon, etc.)
+- **🌍 Multi-language** - English and Chinese service detection
+- **💱 Multi-currency** - Support for USD, EUR, GBP, CNY, and more
 
-### Backend
-- **Node.js** - JavaScript runtime
-- **Express** - Web framework
-- **PostgreSQL** - Relational database
-- **CORS** - Cross-Origin Resource Sharing middleware
+### User Experience
+- **🎨 Modern UI** - Clean, responsive interface built with React and TailwindCSS
+- **🌙 Theme Support** - Light and dark mode options
+- **👤 User Profiles** - Customizable avatars and preferences
+- **🔐 Secure Authentication** - JWT-based auth with password hashing
+- **📱 Mobile Friendly** - Responsive design for all devices
 
-## 📋 Prerequisites
+## 🏗️ Architecture
 
-- Node.js (v18 or higher)
-- PostgreSQL
-- npm or yarn
+### Frontend (React)
+- **Framework**: React 18 with Vite
+- **Styling**: TailwindCSS + DaisyUI
+- **State Management**: React Query for server state
+- **Routing**: React Router
+- **Charts**: Recharts for data visualization
 
-## 🔧 Installation
+### Backend (Node.js)
+- **Runtime**: Node.js 18 with Express
+- **Database**: PostgreSQL 16
+- **Authentication**: JWT with bcrypt
+- **Email Integration**: Gmail API with OAuth 2.0
+- **File Uploads**: Multer for avatar management
+- **Background Jobs**: Cron jobs for subscription updates
 
-### Clone the repository
+### Infrastructure
+- **Containerization**: Docker & Docker Compose
+- **Reverse Proxy**: Nginx for frontend
+- **Database**: PostgreSQL with optimized indexes
+- **Environment**: Secure environment variable management
 
+## 🚀 Quick Start
+
+### Prerequisites
+- Docker and Docker Compose
+- Google Cloud Console account (for email integration)
+- Git
+
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/your-username/SubTrack.git
-cd SubTrack
+git clone https://github.com/lqc412/Subtrack.git
+cd subtrack
 ```
 
-### Setup Backend
-
+### 2. Environment Setup
 ```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit with your configuration
+nano .env
+```
+
+Required environment variables:
+```env
+# Database
+POSTGRES_DB=SubTrack_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_secure_password
+
+# JWT Security
+JWT_SECRET=your_32_character_random_string
+
+# Google OAuth (for email integration)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GOOGLE_REDIRECT_URI=http://localhost:5173/email/callback
+```
+
+### 3. Google OAuth Setup
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Enable Gmail API
+4. Create OAuth 2.0 credentials
+5. Add `http://localhost:5173/email/callback` to authorized redirect URIs
+6. Copy Client ID and Secret to `.env` file
+
+### 4. Start the Application
+```bash
+# Start all services
+docker-compose up -d
+
+# Check status
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+```
+
+### 5. Access the Application
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3000
+
+## 📖 Usage Guide
+
+### Getting Started
+1. **Register Account**: Create your account at http://localhost:5173/register
+2. **Add Subscriptions**: Manually add subscriptions or use email integration
+3. **Connect Email**: Link your Gmail for automatic detection
+4. **Monitor Dashboard**: Track spending and upcoming payments
+
+### Email Integration Workflow
+1. **Connect Gmail**:
+   - Go to Email Integration page
+   - Click "Connect Gmail Account"
+   - Authorize access in popup window
+
+2. **Scan Emails**:
+   - Click "Scan for Subscriptions"
+   - Wait for analysis to complete
+   - Review detected subscriptions
+
+3. **Import Subscriptions**:
+   - Select subscriptions to import
+   - Edit details if needed
+   - Confirm import
+
+### Subscription Management
+- **Add Manually**: Click "+" button or "Add New"
+- **Edit Existing**: Click subscription row options
+- **Set Categories**: Organize by Entertainment, Productivity, etc.
+- **Track Billing**: Monitor next payment dates
+- **Update Status**: Mark as active/inactive
+
+## 🔧 Configuration
+
+### Environment Variables
+
+#### Required
+```env
+POSTGRES_PASSWORD=secure_password_123
+JWT_SECRET=minimum_32_character_secret_key
+GOOGLE_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_CLIENT_SECRET=your_google_oauth_secret
+```
+
+#### Optional
+```env
+# Ports (default values shown)
+FRONTEND_PORT=5173
+BACKEND_PORT=3000
+DB_PORT=5432
+
+# Application
+NODE_ENV=production
+FRONTEND_URL=http://localhost:5173
+
+# Email notifications (future feature)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+```
+
+### Email Template Configuration
+
+The application includes templates for detecting subscriptions from these services:
+
+#### English Services
+- **Streaming**: Netflix, Spotify, YouTube Premium, Disney+, HBO Max, Hulu
+- **Cloud**: Google Workspace, Dropbox, iCloud, OneDrive
+- **Productivity**: Microsoft 365, Adobe Creative Cloud, Notion
+- **Development**: GitHub, GitLab, JetBrains
+- **Communication**: Slack, Zoom, Discord Nitro
+
+#### Chinese Services
+- **视频**: 爱奇艺VIP, 腾讯视频VIP, 优酷VIP, 芒果TV, 哔哩哔哩大会员
+- **音乐**: QQ音乐, 网易云音乐, 酷狗音乐
+- **云存储**: 百度网盘, 阿里云盘
+- **电商**: 淘宝88VIP, 京东PLUS
+- **生产力**: WPS会员, 石墨文档
+
+## 🛠️ Development
+
+### Local Development Setup
+```bash
+# Backend development
 cd SubTrack-backend
 npm install
-
-# Create a .env file with the following variables:
-# DATABASE_URL=postgresql://username:password@localhost:5432/subtrack
-# PORT=3000
-
-# Start development server
 npm run dev
-```
 
-### Setup Frontend
-
-```bash
+# Frontend development
 cd SubTrack-frontend
 npm install
-
-# Start development server
 npm run dev
+
+# Database (using Docker)
+docker run -d \
+  --name subtrack-db \
+  -e POSTGRES_DB=SubTrack_db \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=password \
+  -p 5432:5432 \
+  postgres:16-alpine
 ```
 
-## 📱 Usage
-
-1. **Add Subscription**: Click the "+" button in the bottom right corner
-2. **Edit Subscription**: Click the three dots next to any subscription and select "Update"
-3. **Delete Subscription**: Click the three dots next to any subscription and select "Delete"
-4. **Toggle Status**: Use the toggle in the edit form to mark subscriptions as active/inactive
-
-## 🔄 API Endpoints
-
-- `GET /api/subscriptions` - Get all subscriptions
-- `POST /api/subscriptions` - Create a new subscription
-- `PUT /api/subscriptions/:id` - Update a subscription
-- `DELETE /api/subscriptions/:id` - Delete a subscription
-
-## 📂 Project Structure
-
+### Project Structure
 ```
-SubTrack/
-├── SubTrack-frontend/       # Frontend code
-│   ├── public/              # Static assets
-│   ├── src/                 # Source files
-│   │   ├── components/      # React components
-│   │   ├── assets/          # Images and other assets
-│   │   ├── App.jsx          # Main component
-│   │   └── main.jsx         # Entry point
-│   └── vite.config.js       # Vite configuration
-├── SubTrack-backend/        # Backend code
-│   ├── src/                 # Source files
-│   │   ├── controllers/     # Route controllers
-│   │   ├── routes/          # API routes
-│   │   ├── services/        # Business logic
-│   │   └── index.js         # Entry point
-│   └── package.json         # Dependencies
-└── README.md                # Project documentation
+subtrack/
+├── SubTrack-backend/          # Node.js backend
+│   ├── src/
+│   │   ├── controllers/       # Request handlers
+│   │   ├── services/          # Business logic
+│   │   ├── routes/           # API routes
+│   │   ├── middleware/       # Auth & validation
+│   │   ├── utils/           # Utilities
+│   │   └── jobs/            # Background jobs
+│   ├── uploads/             # File storage
+│   └── Dockerfile
+├── SubTrack-frontend/         # React frontend
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── pages/           # Page components
+│   │   ├── services/        # API clients
+│   │   ├── context/         # React context
+│   │   └── utils/           # Frontend utilities
+│   └── Dockerfile
+├── database/
+│   └── init.sql             # Database schema
+├── docker-compose.yml       # Container orchestration
+└── .env                     # Environment variables
 ```
 
-## 🧪 Running Tests
+### API Endpoints
 
+#### Authentication
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+- `POST /api/auth/logout` - User logout
+- `GET /api/auth/verify` - Token verification
+
+#### Subscriptions
+- `GET /api/subs` - Get all subscriptions
+- `POST /api/subs` - Create subscription
+- `PUT /api/subs/:id` - Update subscription
+- `DELETE /api/subs/:id` - Delete subscription
+- `GET /api/subs/search` - Search subscriptions
+- `GET /api/subs/upcoming` - Get upcoming payments
+- `GET /api/subs/stats` - Get statistics
+
+#### Email Integration
+- `GET /api/email/connections` - Get email connections
+- `GET /api/email/auth-url` - Get OAuth URL
+- `POST /api/email/callback` - Handle OAuth callback
+- `POST /api/email/imports/:connectionId` - Start import
+- `GET /api/email/imports/:importId` - Get import status
+
+#### User Management
+- `GET /api/users/me` - Get current user
+- `PUT /api/users/profile` - Update profile
+- `PUT /api/users/preferences` - Update preferences
+- `PUT /api/users/password` - Change password
+
+## 🔒 Security
+
+### Authentication & Authorization
+- **JWT Tokens**: Secure token-based authentication
+- **Password Hashing**: bcrypt with salt rounds
+- **CORS Protection**: Configured for frontend domain
+- **Input Validation**: Request sanitization and validation
+
+### Data Protection
+- **Environment Variables**: Sensitive data in .env files
+- **Database Security**: Parameterized queries prevent SQL injection
+- **File Upload Safety**: Restricted file types and sizes
+- **OAuth Security**: Secure Google OAuth implementation
+
+### Network Security
+- **Docker Networks**: Isolated container communication
+- **HTTPS Ready**: SSL/TLS support for production
+- **Rate Limiting**: API endpoint protection (configurable)
+
+## 📊 Monitoring & Maintenance
+
+### Container Status
 ```bash
-# Backend tests
-cd SubTrack-backend
-npm test
+# Container status
+docker-compose ps
 
-# Frontend tests
-cd SubTrack-frontend
-npm test
+# Check service availability
+curl http://localhost:3000/api/
+curl http://localhost:5173/
 ```
 
-## 🔮 Future Improvements
+### Logs
+```bash
+# All services
+docker-compose logs -f
 
-- User authentication and profiles
-- Data visualization and spending analytics
-- Email notifications for upcoming payments
-- Subscription recommendations
-- Import subscriptions from bank statements or emails
+# Specific service
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f database
+```
+
+### Database Maintenance
+```bash
+# Backup database
+docker-compose exec database pg_dump -U postgres SubTrack_db > backup.sql
+
+# Restore database
+docker-compose exec -T database psql -U postgres SubTrack_db < backup.sql
+
+# Update email templates
+docker-compose exec database psql -U postgres -d SubTrack_db -f update_templates.sql
+```
+
+### Background Jobs
+The application runs automatic background jobs:
+- **Subscription Updates**: Daily at 2 AM UTC
+- **Job Status**: Check at `/api/admin/job-status`
+- **Manual Trigger**: POST `/api/admin/trigger-update`
+
+## 🚀 Deployment
+
+### Production Environment
+```bash
+# Update environment for production
+NODE_ENV=production
+FRONTEND_URL=https://yourdomain.com
+GOOGLE_REDIRECT_URI=https://yourdomain.com/email/callback
+
+# Use external database (recommended)
+PG_HOST=your-production-db-host
+```
+
+### Docker Production Build
+```bash
+# Build production images
+docker-compose build --no-cache
+
+# Start production services
+docker-compose up -d
+
+# Enable logging
+docker-compose logs -f > app.log 2>&1 &
+```
+
+### Reverse Proxy (Nginx)
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    
+    location / {
+        proxy_pass http://localhost:5173;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
+### Development Workflow
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
+
+### Code Standards
+- **Frontend**: ESLint + Prettier
+- **Backend**: ESLint + Node.js best practices
+- **Database**: PostgreSQL naming conventions
+- **Commits**: Conventional commit messages
+
+### Adding Email Templates
+```sql
+INSERT INTO email_templates (service_name, sender_pattern, subject_pattern, body_patterns, category) VALUES
+('New Service', '.*newservice.*', '.*(subscription|payment).*', '{"amount": "\\$([0-9]+\\.?[0-9]*)", "date": "([0-9]{1,2}/[0-9]{1,2}/[0-9]{4})"}', 'Category');
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### Email Integration Not Working
+```bash
+# Check Google OAuth configuration
+echo $GOOGLE_CLIENT_ID
+echo $GOOGLE_REDIRECT_URI
+
+# Verify email templates
+docker-compose exec database psql -U postgres -d SubTrack_db -c "SELECT COUNT(*) FROM email_templates;"
+```
+
+#### Database Connection Issues
+```bash
+# Check database status
+docker-compose exec database pg_isready -U postgres
+
+# Test database connection
+docker-compose exec database psql -U postgres -d SubTrack_db -c "SELECT 1;"
+
+# Reset database
+docker-compose down -v
+docker-compose up -d
+```
+
+#### Frontend Not Loading
+```bash
+# Check frontend build
+docker-compose logs frontend
+
+# Verify nginx configuration
+docker-compose exec frontend nginx -t
+```
+
+#### Backend API Errors
+```bash
+# Check backend logs
+docker-compose logs backend
+
+# Test backend API
+curl http://localhost:3000/api/
+
+# Verify environment variables
+docker-compose exec backend env | grep -E "(JWT|PG_|GOOGLE_)"
+```
+
+### Performance Optimization
+- **Database Indexes**: Already optimized for common queries
+- **Background Jobs**: Subscription updates run during off-peak hours
+- **Caching**: Frontend caching via React Query
+- **Image Optimization**: Avatar images are resized and compressed
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👏 Acknowledgements
+## 🙏 Acknowledgments
 
-- [React](https://reactjs.org/)
-- [Vite](https://vitejs.dev/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [DaisyUI](https://daisyui.com/)
-- [Express](https://expressjs.com/)
-- [PostgreSQL](https://www.postgresql.org/)
+- **React Team** - Frontend framework
+- **Express.js** - Backend framework
+- **PostgreSQL** - Database system
+- **Google** - Gmail API integration
+- **Docker** - Containerization platform
+- **TailwindCSS** - Styling framework
+
+---
+
+**Built with ❤️ for subscription management**
+
+*SubTrack - Take control of your subscriptions*
