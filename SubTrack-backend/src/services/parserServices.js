@@ -41,31 +41,48 @@ export class EmailParser {
       return '';
     }
   }
-  
+
+  // Extract normalized plain text body from an email payload
+  getBodyText(email) {
+    if (!email || !email.payload) return '';
+
+    let bodyText = '';
+    const { payload } = email;
+
+    if (payload.body && payload.body.data) {
+      bodyText = this.decodeEmailBody(payload.body);
+    }
+
+    if (!bodyText && payload.parts) {
+      for (const part of payload.parts) {
+        if (part.mimeType === 'text/plain' && part.body?.data) {
+          bodyText += this.decodeEmailBody(part.body);
+        } else if (part.parts) {
+          for (const nested of part.parts) {
+            if (nested.mimeType === 'text/plain' && nested.body?.data) {
+              bodyText += this.decodeEmailBody(nested.body);
+            }
+          }
+        }
+      }
+    }
+
+    return bodyText;
+  }
+
   // Try to match email with known templates
   async matchTemplates(email) {
     const templates = await this.loadTemplates();
     const headers = this.parseHeaders(email.payload.headers);
     const sender = headers.from || '';
     const subject = headers.subject || '';
-    
+
     console.log(`🔍 Analyzing email:`);
     console.log(`  From: ${sender}`);
     console.log(`  Subject: ${subject}`);
-    
-    // Get email body content
-    let bodyText = '';
-    if (email.payload.body.size > 0) {
-      bodyText = this.decodeEmailBody(email.payload.body);
-    } else if (email.payload.parts) {
-      // Handle multipart emails
-      for (const part of email.payload.parts) {
-        if (part.mimeType === 'text/plain') {
-          bodyText += this.decodeEmailBody(part.body);
-        }
-      }
-    }
-    
+
+    const bodyText = this.getBodyText(email);
+
     console.log(`  Body length: ${bodyText.length} characters`);
     console.log(`  Body preview: ${bodyText.substring(0, 200)}...`);
     
@@ -169,7 +186,7 @@ export class EmailParser {
   // Convert to subscription object
   convertToSubscription(matchResult) {
     if (!matchResult.matched) return null;
-    
+
     console.log(`🔄 Converting match result to subscription:`, matchResult);
     
     // Handle amount, remove currency symbols, convert to number
@@ -232,6 +249,75 @@ export class EmailParser {
     
     console.log(`✅ Final subscription object:`, subscription);
     return subscription;
+  }
+
+  // Convert LangGraph agent output into a subscription object
+  convertAIResult(aiResult) {
+    if (!aiResult || !aiResult.matched) {
+      return null;
+    }
+
+    const { data } = aiResult;
+    const company = data.service || 'Unknown Service';
+    let amount = 0;
+
+    if (data.amount !== null && data.amount !== undefined) {
+      if (typeof data.amount === 'number') {
+        amount = data.amount;
+      } else if (typeof data.amount === 'string') {
+        const amountStr = data.amount.replace(/[^0-9.]/g, '');
+        amount = parseFloat(amountStr) || 0;
+      }
+    }
+
+    let currency = data.currency || 'USD';
+    if (!data.currency && typeof data.amount === 'string') {
+      if (data.amount.includes('€')) currency = 'EUR';
+      else if (data.amount.includes('£')) currency = 'GBP';
+      else if (data.amount.includes('¥')) currency = 'CNY';
+      else if (data.amount.includes('₹')) currency = 'INR';
+    }
+
+    let nextBillingDate = null;
+    if (data.date) {
+      try {
+        nextBillingDate = new Date(data.date);
+      } catch (error) {
+        console.warn('Failed to parse AI provided date, defaulting to next month');
+      }
+    }
+
+    if (!nextBillingDate || Number.isNaN(nextBillingDate.getTime())) {
+      nextBillingDate = new Date();
+      nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
+    }
+
+    let billingCycle = 'monthly';
+    if (data.cycle && typeof data.cycle === 'string') {
+      const cycleStr = data.cycle.toLowerCase();
+      if (cycleStr.includes('year')) billingCycle = 'yearly';
+      else if (cycleStr.includes('week')) billingCycle = 'weekly';
+      else if (cycleStr.includes('day')) billingCycle = 'daily';
+      else if (cycleStr.includes('quarter')) billingCycle = 'quarterly';
+    }
+
+    const confidenceNote = aiResult.confidence ? ` (confidence ${(aiResult.confidence * 100).toFixed(0)}%)` : '';
+    const notes = [`AI-detected subscription${confidenceNote}`];
+
+    if (data.reasoning) {
+      notes.push(data.reasoning.trim());
+    }
+
+    return {
+      company,
+      category: '',
+      billing_cycle: billingCycle,
+      next_billing_date: nextBillingDate.toISOString().split('T')[0],
+      amount,
+      currency,
+      notes: notes.join('. '),
+      is_active: true
+    };
   }
 }
 

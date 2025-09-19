@@ -20,6 +20,7 @@ A comprehensive full-stack application for tracking and managing your subscripti
 - **📧 Gmail Integration** - Connect your Gmail account via OAuth
 - **🤖 Smart Detection** - AI-powered subscription detection from emails
 - **🎯 Pattern Matching** - Support for 30+ popular services (Netflix, Spotify, Amazon, etc.)
+- **🧠 LangGraph Agents** - Use generative AI to review ambiguous emails and recover subscription details
 - **🌍 Multi-language** - English and Chinese service detection
 - **💱 Multi-currency** - Support for USD, EUR, GBP, CNY, and more
 
@@ -29,6 +30,7 @@ A comprehensive full-stack application for tracking and managing your subscripti
 - **👤 User Profiles** - Customizable avatars and preferences
 - **🔐 Secure Authentication** - JWT-based auth with password hashing
 - **📱 Mobile Friendly** - Responsive design for all devices
+- **💬 AI Spend Advisor** - Chatbot powered by LangGraph to suggest how to optimise monthly spend
 
 ## 🏗️ Architecture
 
@@ -131,7 +133,7 @@ docker-compose logs -f
 
 2. **Scan Emails**:
    - Click "Scan for Subscriptions"
-   - Wait for analysis to complete
+   - Wait for analysis to complete (LangGraph agent will review any unrecognized templates)
    - Review detected subscriptions
 
 3. **Import Subscriptions**:
@@ -168,6 +170,13 @@ DB_PORT=5432
 # Application
 NODE_ENV=production
 FRONTEND_URL=http://localhost:5173
+
+# LangGraph AI (optional but recommended for enhanced detection/chat)
+LANGGRAPH_API_URL=https://your-langgraph-deployment
+LANGGRAPH_API_KEY=your_langgraph_api_key
+LANGGRAPH_EMAIL_AGENT_ID=subscription-email-agent
+LANGGRAPH_CHAT_AGENT_ID=spend-coach-agent
+LANGGRAPH_TIMEOUT_MS=15000
 
 # Email notifications (future feature)
 SMTP_HOST=smtp.gmail.com

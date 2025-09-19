@@ -1,6 +1,7 @@
 import { query } from '../db.js';
 import GmailAPI from '../utils/gmailAPI.js';
 import EmailParser from './parserServices.js';
+import langGraphAgentService from './aiAgentService.js';
 
 export class EmailService {
   // Get all email connections for a user
@@ -213,31 +214,58 @@ export class EmailService {
           try {
             const email = await api.getEmailDetails(message.id);
             
+            const headers = EmailParser.parseHeaders(email.payload.headers);
+
             // Try to match with a subscription template
             const matchResult = await EmailParser.matchTemplates(email);
-            
+            let subscriptionData = null;
+            let detectionMethod = 'template';
+
             if (matchResult.matched) {
-              // Convert to subscription data
-              const subscriptionData = EmailParser.convertToSubscription(matchResult);
-              
-              if (subscriptionData) {
-                // Add additional data
-                subscriptionData.user_id = userId;
-                subscriptionData.source = 'email';
-                subscriptionData.source_id = `email_${connection.provider}_${message.id}`;
-                
-                // Check if a similar subscription already exists
-                const existingResult = await query(
-                  `SELECT id FROM subscriptions 
-                   WHERE user_id = $1 AND company = $2 AND ABS(amount - $3) < 0.01`,
-                  [userId, subscriptionData.company, subscriptionData.amount]
-                );
-                
-                if (existingResult.rows.length === 0) {
-                  // Store in our temporary array for later insertion
-                  detectedSubscriptions.push(subscriptionData);
-                  found++;
+              subscriptionData = EmailParser.convertToSubscription(matchResult);
+            }
+
+            // Fallback to LangGraph AI agent if templates did not match
+            if (!subscriptionData && langGraphAgentService.hasEmailAgent()) {
+              const aiResult = await langGraphAgentService.analyzeEmailForSubscription({
+                id: email.id,
+                subject: headers.subject || '',
+                from: headers.from || '',
+                to: headers.to || userEmail,
+                snippet: email.snippet || '',
+                body: EmailParser.getBodyText(email),
+                received_at: headers.date || headers['received'] || null,
+                provider: connection.provider,
+                userId
+              });
+
+              if (aiResult && aiResult.matched) {
+                subscriptionData = EmailParser.convertAIResult(aiResult);
+                detectionMethod = 'langgraph';
+
+                if (subscriptionData && aiResult.data?.suggestions?.length) {
+                  subscriptionData.notes = `${subscriptionData.notes}. Suggestions: ${aiResult.data.suggestions.join(' | ')}`;
                 }
+              }
+            }
+
+            if (subscriptionData) {
+              // Add additional data
+              subscriptionData.user_id = userId;
+              subscriptionData.source = detectionMethod === 'langgraph' ? 'email-ai' : 'email';
+              subscriptionData.source_id = `${subscriptionData.source}_${connection.provider}_${message.id}`;
+
+              // Check if a similar subscription already exists
+              const existingResult = await query(
+                `SELECT id FROM subscriptions
+                 WHERE user_id = $1 AND company = $2 AND ABS(amount - $3) < 0.01`,
+                [userId, subscriptionData.company, subscriptionData.amount]
+              );
+
+              if (existingResult.rows.length === 0) {
+                // Store in our temporary array for later insertion
+                detectedSubscriptions.push(subscriptionData);
+                found++;
               }
             }
             
