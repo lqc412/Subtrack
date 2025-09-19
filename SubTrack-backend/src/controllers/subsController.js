@@ -4,6 +4,7 @@
 import * as subsService from '../services/subsServices.js';
 import { query } from '../db.js';
 import langGraphAgentService from '../services/aiAgentService.js';
+import { normalizeChatActions } from '../utils/chatActions.js';
 
 /**
  * Get all subscriptions for the authenticated user with auto-update
@@ -377,6 +378,8 @@ export const chatWithSpendAdvisor = async (req, res) => {
     const userId = req.user.id;
     const { message, goal, actions, history, locale } = req.body;
 
+    const normalizedActions = normalizeChatActions(actions);
+
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ message: 'Message is required' });
     }
@@ -440,7 +443,7 @@ export const chatWithSpendAdvisor = async (req, res) => {
       userId,
       goal,
       message,
-      actions,
+      actions: normalizedActions,
       history,
       locale,
       subscriptions: normalizedSubs,
