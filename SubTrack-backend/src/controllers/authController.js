@@ -1,6 +1,9 @@
 import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import * as authService from '../services/authServices.js';
+import * as userService from '../services/userServices.js';
+import * as notificationService from '../services/notificationService.js';
 
 /**
  * Register a new user
@@ -32,6 +35,11 @@ export const register = async (req, res) => {
     // Generate and store token
     const token = generateToken(newUser.id);
     await authService.storeToken(newUser.id, token);
+
+    // Attempt to send welcome email without blocking the response
+    notificationService
+      .sendWelcomeEmail(newUser)
+      .catch((emailError) => console.warn('Failed to send welcome email:', emailError));
 
     res.status(201).json({
       user: {
@@ -155,4 +163,81 @@ const generateToken = (userId) => {
     process.env.JWT_SECRET || 'your_jwt_secret',
     { expiresIn: '7d' }
   );
+};
+
+/**
+ * Start password reset flow by sending an email
+ */
+export const requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email is required' });
+  }
+
+  try {
+    const user = await authService.findUserByEmail(email);
+
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      await authService.removePasswordResetTokensForUser(user.id);
+      await authService.createPasswordResetToken(user.id, tokenHash, expiresAt);
+
+      notificationService
+        .sendPasswordResetEmail(user, rawToken)
+        .catch((emailError) => console.warn('Failed to send password reset email:', emailError));
+    }
+
+    res.json({
+      message: 'If an account exists for that email, password reset instructions have been sent.'
+    });
+  } catch (error) {
+    console.error('Error requesting password reset:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Complete password reset using the provided token
+ */
+export const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ message: 'Token and new password are required' });
+  }
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const resetRecord = await authService.findPasswordResetToken(tokenHash);
+
+    if (!resetRecord) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    if (new Date(resetRecord.expires_at) < new Date()) {
+      await authService.markPasswordResetTokenUsed(resetRecord.id);
+      return res.status(400).json({ message: 'Reset token has expired' });
+    }
+
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(password, salt);
+
+    await userService.updatePassword(resetRecord.user_id, hashedPassword);
+    await authService.markPasswordResetTokenUsed(resetRecord.id);
+    await authService.deleteTokensByUserId(resetRecord.user_id);
+
+    const user = await authService.findUserById(resetRecord.user_id);
+    notificationService
+      .sendPasswordChangedEmail(user)
+      .catch((emailError) => console.warn('Failed to send password change confirmation:', emailError));
+
+    res.json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
 };

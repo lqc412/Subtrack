@@ -1,6 +1,7 @@
 import bcryptjs from 'bcryptjs';
 import * as userService from '../services/userServices.js';
 import * as authService from '../services/authServices.js';
+import * as notificationService from '../services/notificationService.js';
 
 /**
  * Get currently authenticated user's information
@@ -131,7 +132,7 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Password reset required. Please contact support.' });
     }
     
-    const isPasswordValid = await js.compare(currentPassword, user.password_hash);
+    const isPasswordValid = await bcryptjs.compare(currentPassword, user.password_hash);
     if (!isPasswordValid) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
@@ -141,15 +142,15 @@ export const changePassword = async (req, res) => {
 
     // Update password
     await userService.updatePassword(userId, hashedPassword);
-    
-    // Get the current token from the Authorization header
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
 
     // Invalidate all user tokens (this will force logout on all devices)
-    await authService.deleteToken(userId);
+    await authService.deleteTokensByUserId(userId);
 
-    res.json({ 
+    notificationService
+      .sendPasswordChangedEmail(user)
+      .catch((emailError) => console.warn('Failed to send password change confirmation:', emailError));
+
+    res.json({
       message: 'Password updated successfully',
       logout: true // Signal to frontend that user should be logged out
     });

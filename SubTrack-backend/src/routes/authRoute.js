@@ -12,6 +12,12 @@ router.post('/login', authController.login);
 // POST /logout - log out a user
 router.post('/logout', authController.logout);
 
+// POST /forgot-password - start reset flow
+router.post('/forgot-password', authController.requestPasswordReset);
+
+// POST /reset-password - finish reset flow
+router.post('/reset-password', authController.resetPassword);
+
 // GET /verify - verify if current token is valid
 router.get('/verify', authController.verifyToken);
 
