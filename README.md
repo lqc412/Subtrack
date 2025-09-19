@@ -178,6 +178,8 @@ LANGGRAPH_EMAIL_AGENT_ID=subscription-email-agent
 LANGGRAPH_CHAT_AGENT_ID=spend-coach-agent
 LANGGRAPH_TIMEOUT_MS=15000
 
+> **Docker deployments:** Ensure each `LANGGRAPH_*` variable is present in your `.env` file so `docker-compose` can forward them to the backend container.
+
 # Email notifications (future feature)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
