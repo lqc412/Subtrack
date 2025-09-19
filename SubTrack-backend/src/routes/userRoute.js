@@ -9,32 +9,32 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 配置存储
+// Configure storage for avatar uploads
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, path.join(__dirname, '../../uploads/avatars/'));
     },
     filename: function (req, file, cb) {
-      // 使用用户ID和时间戳创建唯一文件名
+      // Create a unique filename using the user ID and a timestamp
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       const fileExt = path.extname(file.originalname);
       cb(null, `avatar-${req.user.id}-${uniqueSuffix}${fileExt}`);
     }
   });
   
-  // 过滤器：只接受图像文件
+  // Filter: only accept image files
   const fileFilter = (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持上传图像文件!'), false);
+      cb(new Error('Only image files are supported!'), false);
     }
   };
   
   const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 } // 限制5MB
+    limits: { fileSize: 5 * 1024 * 1024 } // Limit to 5MB
   });
 
 // All routes below require authentication
@@ -46,7 +46,7 @@ router.get('/me', userController.getCurrentUser);
 // PUT /profile - update profile (with file upload)
 router.put('/profile', upload.single('profile_image'), userController.updateProfile);
 
-// 路由配置
+// Route configuration
 router.put('/profile', authenticateToken, upload.single('profile_image'), userController.updateProfile);
 
 // GET /preferences - get user preferences

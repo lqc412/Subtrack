@@ -1,5 +1,5 @@
 // SubTrack-backend/src/config/oauth.js
-// OAuth 配置文件 - 管理第三方服务的认证配置
+// OAuth configuration file - manages authentication settings for third-party services
 
 export default {
   google: {

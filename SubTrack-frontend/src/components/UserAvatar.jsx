@@ -1,5 +1,5 @@
 // src/components/UserAvatar.jsx
-// 这是一个包含用户信息和头像的复合组件，用于侧边栏和用户信息展示
+// A composite component with user information and avatar for sidebars and profile displays
 
 import React from 'react';
 import AvatarDisplay from './AvatarDisplay';
@@ -13,7 +13,7 @@ const UserAvatar = ({
   interactive = false,
   onClick = null
 }) => {
-  // 为不同尺寸设置内容的大小
+  // Map avatar sizes to corresponding text sizes
   const contentSizes = {
     'xs': 'text-xs',
     'sm': 'text-sm',
@@ -22,7 +22,7 @@ const UserAvatar = ({
     'xl': 'text-xl'
   };
   
-  // 默认用户数据
+  // Default fallback data when user details are missing
   const userData = {
     username: user?.username || 'User',
     email: user?.email || 'user@example.com',
