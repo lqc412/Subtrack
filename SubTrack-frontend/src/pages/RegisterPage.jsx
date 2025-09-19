@@ -21,18 +21,18 @@ export default function RegisterPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLocalError('');
-    
-    // 客户端验证
+
+    // Client-side validation
     if (!formData.username || !formData.email || !formData.password) {
-      setLocalError('所有字段都是必填的');
+      setLocalError('All fields are required');
       return;
     }
-    
+
     if (formData.password !== formData.confirmPassword) {
-      setLocalError('密码不匹配');
+      setLocalError('Passwords do not match');
       return;
     }
-    
+
     try {
       await register({
         username: formData.username,
@@ -41,103 +41,104 @@ export default function RegisterPage() {
       });
       navigate('/');
     } catch (err) {
-      // 错误已经在AuthContext中处理
-      console.error('注册处理错误:', err);
+      // Errors are handled inside AuthContext
+      console.error('Error during registration:', err);
     }
   };
 
-  // 显示错误信息（本地或从AuthContext获取）
+  // Display any error message from local state or AuthContext
   const displayError = localError || authError;
 
   return (
     <div className="flex flex-col items-center justify-center px-6 py-8 mx-auto w-full max-w-md">
       <div className="w-full bg-white rounded-lg shadow-md p-6">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">创建账号</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Create Account</h1>
           <p className="mt-2 text-sm text-gray-600">
-            已有账号? <Link to="/login" className="text-primary hover:underline">登录</Link>
+            Already have an account? <Link to="/login" className="text-primary hover:underline">Log in</Link>
           </p>
         </div>
-        
+
         {displayError && (
           <div className="alert alert-error mb-4">
             <span>{displayError}</span>
           </div>
         )}
-        
+
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700">用户名</label>
-            <input 
-              type="text" 
-              id="username" 
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">Username</label>
+            <input
+              type="text"
+              id="username"
               name="username"
-              className="input input-bordered w-full mt-1" 
+              className="input input-bordered w-full mt-1"
               value={formData.username}
               onChange={handleChange}
               required
             />
           </div>
-          
+
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">邮箱</label>
-            <input 
-              type="email" 
-              id="email" 
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
+            <input
+              type="email"
+              id="email"
               name="email"
-              className="input input-bordered w-full mt-1" 
+              className="input input-bordered w-full mt-1"
               value={formData.email}
               onChange={handleChange}
               required
             />
           </div>
-          
+
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">密码</label>
-            <input 
-              type="password" 
-              id="password" 
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+            <input
+              type="password"
+              id="password"
               name="password"
-              className="input input-bordered w-full mt-1" 
+              className="input input-bordered w-full mt-1"
               value={formData.password}
               onChange={handleChange}
               required
               minLength={6}
             />
-            <p className="text-xs text-gray-500 mt-1">密码至少需要6个字符</p>
+            <p className="text-xs text-gray-500 mt-1">Password must be at least 6 characters long</p>
           </div>
-          
+
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">确认密码</label>
-            <input 
-              type="password" 
-              id="confirmPassword" 
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">Confirm Password</label>
+            <input
+              type="password"
+              id="confirmPassword"
               name="confirmPassword"
-              className="input input-bordered w-full mt-1" 
+              className="input input-bordered w-full mt-1"
               value={formData.confirmPassword}
               onChange={handleChange}
               required
             />
           </div>
-          
+
           <div className="flex items-center">
             <input id="terms" type="checkbox" className="checkbox checkbox-primary" required />
             <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
-              我同意 <a href="#" className="text-primary hover:underline">服务条款</a> 和 <a href="#" className="text-primary hover:underline">隐私政策</a>
+              I agree to the <a href="#" className="text-primary hover:underline">Terms of Service</a> and <a href="#" className="text-primary hover:underline">Privacy Policy</a>
             </label>
           </div>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             className="btn btn-primary w-full"
             disabled={loading}
           >
             {loading ? (
               <span className="loading loading-spinner loading-sm"></span>
-            ) : '创建账号'}
+            ) : 'Create Account'}
           </button>
         </form>
       </div>
     </div>
   );
 }
+

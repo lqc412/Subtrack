@@ -1,32 +1,32 @@
 import api from './api';
 
 const emailService = {
-  // 获取用户的邮箱连接
+  // Retrieve the user's email connections
   getUserConnections: () => {
     return api.get('/email/connections');
   },
   
-  // 获取授权URL
+  // Get the authorization URL
   getAuthUrl: (provider) => {
     return api.get(`/email/auth-url?provider=${provider}`);
   },
   
-  // 处理OAuth回调
+  // Handle the OAuth callback
   handleCallback: (code, provider) => {
     return api.post('/email/callback', { code, provider });
   },
   
-  // 开始导入邮件
+  // Start importing emails
   startImport: (connectionId) => {
     return api.post(`/email/imports/${connectionId}`);
   },
   
-  // 获取导入状态
+  // Check the status of an import job
   getImportStatus: (importId) => {
     return api.get(`/email/imports/${importId}`);
   },
   
-  // 获取最近导入的订阅
+  // Fetch the most recently imported subscriptions
   getRecentSubscriptions: (importId) => {
     return api.get('/subs/recent', { params: { importId } });
   }

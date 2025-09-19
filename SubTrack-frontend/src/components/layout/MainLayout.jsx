@@ -18,7 +18,7 @@ export default function MainLayout() {
       <input id="drawer-toggle" type="checkbox" className="drawer-toggle" />
       
       <div className="drawer-content flex flex-col">
-        {/* 顶部导航栏 */}
+        {/* Top navigation bar */}
         <div className="navbar bg-base-100 shadow-sm">
           <div className="flex-none lg:hidden">
             <label htmlFor="drawer-toggle" className="btn btn-square btn-ghost">
@@ -52,13 +52,13 @@ export default function MainLayout() {
           </div>
         </div>
         
-        {/* 主内容 */}
+        {/* Main content */}
         <div className="p-4 md:p-6">
           <Outlet />
         </div>
       </div>
       
-      {/* 侧边栏 */}
+      {/* Sidebar */}
       <div className="drawer-side">
         <label htmlFor="drawer-toggle" className="drawer-overlay"></label>
         <aside className="bg-base-200 w-64 h-full">
@@ -97,7 +97,7 @@ export default function MainLayout() {
             
             <div className="mt-auto pt-6">
               <div className="rounded-lg bg-base-300 p-2">
-                {/* 使用新的UserAvatar组件 */}
+                {/* Use the new UserAvatar component */}
                 <UserAvatar 
                   user={currentUser}
                   showLogout={true}
@@ -112,3 +112,4 @@ export default function MainLayout() {
     </div>
   );
 }
+

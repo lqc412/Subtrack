@@ -197,11 +197,11 @@ The application includes templates for detecting subscriptions from these servic
 - **Communication**: Slack, Zoom, Discord Nitro
 
 #### Chinese Services
-- **视频**: 爱奇艺VIP, 腾讯视频VIP, 优酷VIP, 芒果TV, 哔哩哔哩大会员
-- **音乐**: QQ音乐, 网易云音乐, 酷狗音乐
-- **云存储**: 百度网盘, 阿里云盘
-- **电商**: 淘宝88VIP, 京东PLUS
-- **生产力**: WPS会员, 石墨文档
+- **Video**: iQIYI VIP, Tencent Video VIP, Youku VIP, Mango TV, Bilibili Premium
+- **Music**: QQ Music, NetEase Cloud Music, Kugou Music
+- **Cloud Storage**: Baidu Netdisk, Aliyun Drive
+- **E-commerce**: Taobao 88VIP, JD PLUS
+- **Productivity**: WPS Premium, Shimo Docs
 
 ## 🛠️ Development
 

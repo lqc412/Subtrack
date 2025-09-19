@@ -31,30 +31,30 @@ export const updateProfile = async (req, res) => {
     const userId = req.user.id;
     const { username, email } = req.body;
     
-    // 构建更新数据对象
+    // Build the update payload
     const updateData = {
       username,
       email
     };
 
-    // 处理头像上传
+    // Handle avatar uploads
     if (req.file) {
-      // 生成公开访问URL
+      // Generate a publicly accessible URL
       const serverUrl = `${req.protocol}://${req.get('host')}`;
       const profileImageUrl = `${serverUrl}/uploads/avatars/${req.file.filename}`;
-      
-      // 添加到更新数据
+
+      // Add the image URL to the payload
       updateData.profile_image = profileImageUrl;
     } else if (req.body.profile_image_url) {
-      // 如果是直接提供的URL
+      // Support direct URLs provided by the client
       updateData.profile_image = req.body.profile_image_url;
     }
 
-    // 如果更改了邮箱，检查是否已被使用
+    // If the email changed, ensure it is not already taken
     if (email) {
       const existingUser = await authService.findUserByEmail(email);
       if (existingUser && existingUser.id !== userId) {
-        return res.status(400).json({ message: '邮箱已被其他用户使用' });
+        return res.status(400).json({ message: 'Email is already in use by another user' });
       }
     }
 
@@ -63,8 +63,8 @@ export const updateProfile = async (req, res) => {
     delete updatedUser.password_hash;
     res.json(updatedUser);
   } catch (error) {
-    console.error('更新个人资料出错:', error);
-    res.status(500).json({ message: '服务器内部错误' });
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
 
