@@ -3,6 +3,7 @@
 
 import * as subsService from '../services/subsServices.js';
 import { query } from '../db.js';
+import langGraphAgentService from '../services/aiAgentService.js';
 
 /**
  * Get all subscriptions for the authenticated user with auto-update
@@ -277,50 +278,33 @@ export const getRecentSubscriptions = async (req, res) => {
       return res.status(404).json({ message: 'Import log not found' });
     }
     
-    const importLog = importLogQuery.rows[0];
-    
-    // Mock data for testing - in a real implementation, you would have saved these
-    // during the email parsing process with a reference to the import ID
-    const mockDetectedSubscriptions = [
-      {
-        company: 'Netflix',
-        category: 'Entertainment',
-        billing_cycle: 'monthly',
-        next_billing_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        amount: 15.99,
-        currency: 'USD',
-        notes: 'Detected from email',
-        is_active: true,
-        source: 'email',
-        source_id: `email_import_${importId}_1`
-      },
-      {
-        company: 'Spotify',
-        category: 'Entertainment',
-        billing_cycle: 'monthly',
-        next_billing_date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        amount: 9.99,
-        currency: 'USD',
-        notes: 'Detected from email',
-        is_active: true,
-        source: 'email',
-        source_id: `email_import_${importId}_2`
-      },
-      {
-        company: 'Adobe Creative Cloud',
-        category: 'Productivity',
-        billing_cycle: 'monthly',
-        next_billing_date: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        amount: 52.99,
-        currency: 'USD',
-        notes: 'Detected from email',
-        is_active: true,
-        source: 'email',
-        source_id: `email_import_${importId}_3`
-      }
-    ];
-    
-    res.status(200).json(mockDetectedSubscriptions);
+    const { rows } = await query(
+      `SELECT company, category, billing_cycle, next_billing_date, amount, currency,
+              notes, is_active, source, source_id, detected_at
+         FROM temporary_detected_subscriptions
+        WHERE user_id = $1 AND import_id = $2
+        ORDER BY detected_at DESC`,
+      [userId, importId]
+    );
+
+    const normalized = rows.map(row => ({
+      company: row.company,
+      category: row.category,
+      billing_cycle: row.billing_cycle,
+      next_billing_date: row.next_billing_date
+        ? row.next_billing_date.toISOString().split('T')[0]
+        : null,
+      amount: typeof row.amount === 'number' ? row.amount : parseFloat(row.amount),
+      currency: row.currency,
+      notes: row.notes,
+      is_active: row.is_active,
+      source: row.source,
+      source_id: row.source_id,
+      detected_at: row.detected_at,
+      detected_via_ai: row.source === 'email-ai'
+    }));
+
+    res.status(200).json(normalized);
   } catch (error) {
     console.error('Error fetching recent subscriptions:', error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -382,5 +366,105 @@ export const createBatchSubscriptions = async (req, res) => {
   } catch (error) {
     console.error('Error creating batch subscriptions:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+/**
+ * Converse with the LangGraph-powered spending advisor chatbot.
+ */
+export const chatWithSpendAdvisor = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { message, goal, actions, history, locale } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    if (!langGraphAgentService.hasChatAgent()) {
+      return res.status(503).json({ message: 'AI assistant is not configured' });
+    }
+
+    const { rows: subscriptions } = await query(
+      `SELECT id, company, category, billing_cycle, next_billing_date, amount, currency, notes, is_active
+         FROM subscriptions
+        WHERE user_id = $1`,
+      [userId]
+    );
+
+    let monthlyTotal = 0;
+    let yearlyTotal = 0;
+
+    const normalizedSubs = subscriptions.map(sub => {
+      const parsedAmount = typeof sub.amount === 'number' ? sub.amount : parseFloat(sub.amount);
+      const amount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+
+      if (sub.is_active) {
+        switch (sub.billing_cycle) {
+          case 'yearly':
+            yearlyTotal += amount;
+            monthlyTotal += amount / 12;
+            break;
+          case 'weekly':
+            yearlyTotal += amount * 52;
+            monthlyTotal += amount * 4.33;
+            break;
+          case 'daily':
+            yearlyTotal += amount * 365;
+            monthlyTotal += amount * 30.44;
+            break;
+          default:
+            yearlyTotal += amount * 12;
+            monthlyTotal += amount;
+            break;
+        }
+      }
+
+      return {
+        id: sub.id,
+        company: sub.company,
+        category: sub.category,
+        billing_cycle: sub.billing_cycle,
+        next_billing_date: sub.next_billing_date,
+        amount,
+        currency: sub.currency,
+        notes: sub.notes,
+        is_active: sub.is_active
+      };
+    });
+
+    const monthlyRounded = Number(monthlyTotal.toFixed(2));
+    const yearlyRounded = Number(yearlyTotal.toFixed(2));
+
+    const aiResponse = await langGraphAgentService.chatWithSpendCoach({
+      userId,
+      goal,
+      message,
+      actions,
+      history,
+      locale,
+      subscriptions: normalizedSubs,
+      monthlyTotal: monthlyRounded,
+      yearlyTotal: yearlyRounded
+    });
+
+    if (!aiResponse) {
+      return res.status(503).json({ message: 'AI assistant did not provide a response' });
+    }
+
+    res.status(200).json({
+      reply: aiResponse.message,
+      suggestions: aiResponse.suggestions,
+      actions: aiResponse.actions,
+      confidence: aiResponse.confidence,
+      metadata: {
+        monthlyTotal: monthlyRounded,
+        yearlyTotal: yearlyRounded,
+        subscriptionCount: normalizedSubs.length
+      }
+    });
+  } catch (error) {
+    console.error('Error communicating with spend advisor:', error);
+    res.status(500).json({ message: 'Failed to contact spending advisor' });
   }
 };
