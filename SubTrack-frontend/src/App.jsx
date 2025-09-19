@@ -14,6 +14,8 @@ import SubscriptionsPage from './pages/SubscriptionsPage';
 import SettingsPage from './pages/SettingsPage';
 import EmailIntegrationPage from './pages/EmailIntegrationPage';
 import EmailCallbackPage from './pages/EmailCallbackPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 // Import layout
 import MainLayout from './components/layout/MainLayout';
@@ -91,6 +93,16 @@ function App() {
             <Route path="/register" element={
               <AuthLayout>
                 <RegisterPage />
+              </AuthLayout>
+            } />
+            <Route path="/forgot-password" element={
+              <AuthLayout>
+                <ForgotPasswordPage />
+              </AuthLayout>
+            } />
+            <Route path="/reset-password" element={
+              <AuthLayout>
+                <ResetPasswordPage />
               </AuthLayout>
             } />
 
