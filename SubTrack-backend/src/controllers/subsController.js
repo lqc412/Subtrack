@@ -292,7 +292,7 @@ export const getRecentSubscriptions = async (req, res) => {
       category: row.category,
       billing_cycle: row.billing_cycle,
       next_billing_date: row.next_billing_date
-        ? row.next_billing_date.toISOString().split('T')[0]
+        ? new Date(row.next_billing_date).toISOString().split('T')[0]
         : null,
       amount: typeof row.amount === 'number' ? row.amount : parseFloat(row.amount),
       currency: row.currency,
