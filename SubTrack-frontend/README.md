@@ -1,12 +1,48 @@
-# React + Vite
+# SubTrack Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This package contains the React application served by Vite for the SubTrack project.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 20+
+- npm 10+
 
-## Expanding the ESLint configuration
+## Installation
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+```
+
+## Environment configuration
+
+Vite reads environment variables from `.env` files at the project root. The repo provides a default development configuration in [`.env.development`](./.env.development) that points the frontend to the local API gateway:
+
+```
+VITE_API_URL=http://localhost:3000/api
+VITE_API_DEBUG=false
+```
+
+To customize the values, create a `.env.local` (or another [Vite environment file](https://vitejs.dev/guide/env-and-mode.html#env-files)) with overrides. The available variables are:
+
+- `VITE_API_URL`: Base URL for API requests. Defaults to `/api` when unset so the frontend can proxy requests through the same origin.
+- `VITE_API_DEBUG`: Set to `true` to log axios request/response information in the browser console. Defaults to `false`.
+
+## Development
+
+```bash
+npm run dev
+```
+
+The command uses the values from `.env.development` by default, so requests are sent to `http://localhost:3000/api`.
+
+## Linting
+
+```bash
+npm run lint
+```
+
+## Production build
+
+```bash
+npm run build
+```
