@@ -46,9 +46,6 @@ router.get('/me', userController.getCurrentUser);
 // PUT /profile - update profile (with file upload)
 router.put('/profile', upload.single('profile_image'), userController.updateProfile);
 
-// Route configuration
-router.put('/profile', authenticateToken, upload.single('profile_image'), userController.updateProfile);
-
 // GET /preferences - get user preferences
 router.get('/preferences', userController.getUserPreferences);
 
