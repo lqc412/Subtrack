@@ -6,6 +6,8 @@ A comprehensive full-stack application for tracking and managing your subscripti
 ![SubsPage](./.github/images/SubsPage.png)
 ![EmailPage](./.github/images/EmailPage.png)
 ![Detector](./.github/images/Detector.png)
+![AIB](./.github/images/AI_Bubble.png)
+![AIC](./.github/images/AI_Chat.png)
 
 ## 🌟 Features
 
