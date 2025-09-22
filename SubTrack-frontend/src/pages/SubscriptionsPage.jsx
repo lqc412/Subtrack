@@ -59,6 +59,18 @@ export default function SubscriptionsPage() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id) => api.delete(`/subs/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+      setError(null);
+    },
+    onError: (err) => {
+      console.error('Error deleting subscription:', err);
+      setError(err.response?.data?.message || 'Failed to delete subscription');
+    }
+  });
+
   const handleOpen = (mode, item = null) => {
     setModalMode(mode);
     setCurrentItem(item);
@@ -142,7 +154,12 @@ export default function SubscriptionsPage() {
         currentItem={currentItem}
       />
       
-      <Dock onOpen={() => handleOpen('add')} />
+      <Dock
+        subscriptions={tableData || []}
+        onCreate={(data) => createMutation.mutateAsync(data)}
+        onUpdate={(id, data) => updateMutation.mutateAsync({ id, data })}
+        onDelete={(id) => deleteMutation.mutateAsync(id)}
+      />
     </div>
   );
 }

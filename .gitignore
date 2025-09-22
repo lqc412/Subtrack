@@ -111,6 +111,8 @@ pnpm-debug.log*
 
 # Ignore all .env files except examples
 !.env.example
+# Frontend defaults for local development
+!SubTrack-frontend/.env.development
 
 # Prisma (if using)
 prisma/.env

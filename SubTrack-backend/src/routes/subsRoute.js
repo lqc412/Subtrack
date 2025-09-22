@@ -45,4 +45,7 @@ router.get('/subs/recent', subsController.getRecentSubscriptions);
 // POST /subs/batch - create multiple subscriptions at once
 router.post('/subs/batch', subsController.createBatchSubscriptions);
 
+// POST /subs/ai/chat - converse with AI spend advisor
+router.post('/subs/ai/chat', subsController.chatWithSpendAdvisor);
+
 export default router;

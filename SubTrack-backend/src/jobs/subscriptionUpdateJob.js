@@ -95,11 +95,21 @@ class SubscriptionUpdateJob {
    * Get job statistics
    */
   getStats() {
+    let nextRun = null;
+    if (this.cronJob && typeof this.cronJob.nextDates === 'function') {
+      try {
+        const next = this.cronJob.nextDates();
+        nextRun = typeof next?.toJSDate === 'function' ? next.toJSDate() : next;
+      } catch (error) {
+        console.warn('Unable to determine next run time for subscription job:', error);
+      }
+    }
+
     return {
       ...this.jobStats,
       isRunning: this.isRunning,
       lastRun: this.lastRun,
-      nextRun: this.cronJob ? this.cronJob.nextDate() : null
+      nextRun
     };
   }
 

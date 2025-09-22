@@ -20,6 +20,7 @@ A comprehensive full-stack application for tracking and managing your subscripti
 - **📧 Gmail Integration** - Connect your Gmail account via OAuth
 - **🤖 Smart Detection** - AI-powered subscription detection from emails
 - **🎯 Pattern Matching** - Support for 30+ popular services (Netflix, Spotify, Amazon, etc.)
+- **🧠 LangGraph Agents** - Use generative AI to review ambiguous emails and recover subscription details
 - **🌍 Multi-language** - English and Chinese service detection
 - **💱 Multi-currency** - Support for USD, EUR, GBP, CNY, and more
 
@@ -29,6 +30,7 @@ A comprehensive full-stack application for tracking and managing your subscripti
 - **👤 User Profiles** - Customizable avatars and preferences
 - **🔐 Secure Authentication** - JWT-based auth with password hashing
 - **📱 Mobile Friendly** - Responsive design for all devices
+- **💬 AI Spend Advisor** - Chatbot powered by LangGraph to suggest how to optimise monthly spend
 
 ## 🏗️ Architecture
 
@@ -131,7 +133,7 @@ docker-compose logs -f
 
 2. **Scan Emails**:
    - Click "Scan for Subscriptions"
-   - Wait for analysis to complete
+   - Wait for analysis to complete (LangGraph agent will review any unrecognized templates)
    - Review detected subscriptions
 
 3. **Import Subscriptions**:
@@ -169,6 +171,15 @@ DB_PORT=5432
 NODE_ENV=production
 FRONTEND_URL=http://localhost:5173
 
+# LangGraph AI (optional but recommended for enhanced detection/chat)
+LANGGRAPH_API_URL=https://your-langgraph-deployment
+LANGGRAPH_API_KEY=your_langgraph_api_key
+LANGGRAPH_EMAIL_AGENT_ID=subscription-email-agent
+LANGGRAPH_CHAT_AGENT_ID=spend-coach-agent
+LANGGRAPH_TIMEOUT_MS=15000
+
+> **Docker deployments:** Ensure each `LANGGRAPH_*` variable is present in your `.env` file so `docker-compose` can forward them to the backend container.
+
 # Email notifications (future feature)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -188,11 +199,11 @@ The application includes templates for detecting subscriptions from these servic
 - **Communication**: Slack, Zoom, Discord Nitro
 
 #### Chinese Services
-- **视频**: 爱奇艺VIP, 腾讯视频VIP, 优酷VIP, 芒果TV, 哔哩哔哩大会员
-- **音乐**: QQ音乐, 网易云音乐, 酷狗音乐
-- **云存储**: 百度网盘, 阿里云盘
-- **电商**: 淘宝88VIP, 京东PLUS
-- **生产力**: WPS会员, 石墨文档
+- **Video**: iQIYI VIP, Tencent Video VIP, Youku VIP, Mango TV, Bilibili Premium
+- **Music**: QQ Music, NetEase Cloud Music, Kugou Music
+- **Cloud Storage**: Baidu Netdisk, Aliyun Drive
+- **E-commerce**: Taobao 88VIP, JD PLUS
+- **Productivity**: WPS Premium, Shimo Docs
 
 ## 🛠️ Development
 

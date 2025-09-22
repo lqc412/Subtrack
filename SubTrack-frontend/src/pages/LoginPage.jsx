@@ -77,7 +77,7 @@ export default function LoginPage() {
               <input id="remember-me" type="checkbox" className="checkbox checkbox-primary" />
               <label htmlFor="remember-me" className="ml-2 text-sm text-gray-600">Remember me</label>
             </div>
-            <a href="#" className="text-sm text-primary hover:underline">Forgot password?</a>
+            <Link to="/forgot-password" className="text-sm text-primary hover:underline">Forgot password?</Link>
           </div>
           
           <button 

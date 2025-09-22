@@ -5,6 +5,7 @@ import { CalendarDays, TrendingUp, ArrowRight, BarChart3, PieChart } from 'lucid
 import api from '../services/api';
 import CategoryChart from '../components/dashboard/CategoryChart';
 import CategorySummary from '../components/dashboard/CategorySummary';
+import AISpendAssistant from '../components/ai/AISpendAssistant';
 
 export default function DashboardPage() {
   const { data: subscriptions, isLoading, error } = useQuery({
@@ -241,6 +242,9 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+      
+      {/* AI Spend Advisor */}
+      <AISpendAssistant monthlyTotal={stats.totalMonthly} />
     </div>
   );
 }

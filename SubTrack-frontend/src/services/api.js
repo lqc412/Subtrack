@@ -1,8 +1,17 @@
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_DEBUG_ENABLED = String(import.meta.env.VITE_API_DEBUG || '').toLowerCase() === 'true';
+
+const debugLog = (...args) => {
+  if (API_DEBUG_ENABLED) {
+    console.log(...args);
+  }
+};
+
 // Create an axios instance
 const api = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -14,13 +23,14 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    
-    // Log the request for debugging (remove in production)
-    console.log(`Making ${config.method.toUpperCase()} request to ${config.url}`);
-    
+
+    // Log the request for debugging when enabled
+    const method = config.method ? config.method.toUpperCase() : 'UNKNOWN';
+    debugLog(`Making ${method} request to ${config.url}`);
+
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      
+
       // Handle special case for FormData (don't set application/json content type)
       if (config.data instanceof FormData) {
         delete config.headers['Content-Type'];
@@ -37,20 +47,20 @@ api.interceptors.request.use(
 // Response interceptor - handle common auth errors
 api.interceptors.response.use(
   (response) => {
-    // Log successful responses for debugging (remove in production)
-    console.log(`Response from ${response.config.url}:`, response.status);
+    // Log successful responses for debugging when enabled
+    debugLog(`Response from ${response.config.url}:`, response.status);
     return response;
   },
   (error) => {
     console.error('Response error:', error);
-    
+
     // Handle authentication errors
     if (error.response) {
-      console.log(`Error response status: ${error.response.status}`);
-      
+      debugLog(`Error response status: ${error.response.status}`);
+
       if (error.response.status === 401) {
-        console.log('Authentication error - redirecting to login');
-        
+        debugLog('Authentication error - redirecting to login');
+
         // Remove token from local storage
         localStorage.removeItem('token');
 
@@ -72,13 +82,13 @@ api.authRequest = async (method, url, data = null) => {
     if (!token) {
       throw new Error('No authentication token found');
     }
-    
+
     const config = {
       headers: {
         Authorization: `Bearer ${token}`
       }
     };
-    
+
     let response;
     switch (method.toLowerCase()) {
       case 'get':
@@ -96,7 +106,7 @@ api.authRequest = async (method, url, data = null) => {
       default:
         throw new Error(`Unsupported method: ${method}`);
     }
-    
+
     return response.data;
   } catch (error) {
     console.error(`AuthRequest failed for ${method} ${url}:`, error);

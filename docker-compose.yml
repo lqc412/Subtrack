@@ -51,13 +51,20 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5173/email/callback}
-      
+
       # Email configuration (optional)
       EMAIL_FROM: ${EMAIL_FROM}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+
+      # LangGraph AI assistant configuration
+      LANGGRAPH_API_URL: ${LANGGRAPH_API_URL}
+      LANGGRAPH_API_KEY: ${LANGGRAPH_API_KEY}
+      LANGGRAPH_EMAIL_AGENT_ID: ${LANGGRAPH_EMAIL_AGENT_ID}
+      LANGGRAPH_CHAT_AGENT_ID: ${LANGGRAPH_CHAT_AGENT_ID}
+      LANGGRAPH_TIMEOUT_MS: ${LANGGRAPH_TIMEOUT_MS}
     ports:
       - "${BACKEND_PORT:-3000}:3000"
     networks:

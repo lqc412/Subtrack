@@ -108,6 +108,19 @@ export const deleteToken = async (token) => {
 };
 
 /**
+ * Delete all tokens for a user
+ */
+export const deleteTokensByUserId = async (userId) => {
+  try {
+    await query('DELETE FROM auth_tokens WHERE user_id = $1', [userId]);
+    return true;
+  } catch (error) {
+    console.error('Error deleting tokens for user:', error);
+    throw error;
+  }
+};
+
+/**
  * Get user settings
  */
 export const getUserSettings = async (userId) => {
@@ -130,7 +143,7 @@ export const updateUserSettings = async (userId, settings) => {
   const { theme_preference, currency_preference, notification_preferences } = settings;
   try {
     const { rows } = await query(
-      `UPDATE user_settings 
+      `UPDATE user_settings
        SET theme_preference = $1, 
            currency_preference = $2, 
            notification_preferences = $3 
@@ -141,6 +154,84 @@ export const updateUserSettings = async (userId, settings) => {
     return rows[0];
   } catch (error) {
     console.error('Error updating user settings:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove existing reset tokens for a user
+ */
+export const removePasswordResetTokensForUser = async (userId) => {
+  try {
+    await query('DELETE FROM password_reset_tokens WHERE user_id = $1', [userId]);
+  } catch (error) {
+    console.error('Error clearing password reset tokens:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create password reset token record
+ */
+export const createPasswordResetToken = async (userId, tokenHash, expiresAt) => {
+  try {
+    const { rows } = await query(
+      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+       VALUES ($1, $2, $3)
+       RETURNING *`,
+      [userId, tokenHash, expiresAt]
+    );
+    return rows[0];
+  } catch (error) {
+    console.error('Error creating password reset token:', error);
+    throw error;
+  }
+};
+
+/**
+ * Find valid reset token by hash
+ */
+export const findPasswordResetToken = async (tokenHash) => {
+  try {
+    const { rows } = await query(
+      `SELECT * FROM password_reset_tokens
+       WHERE token_hash = $1 AND used = FALSE
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [tokenHash]
+    );
+    return rows[0];
+  } catch (error) {
+    console.error('Error finding password reset token:', error);
+    throw error;
+  }
+};
+
+/**
+ * Mark reset token as used
+ */
+export const markPasswordResetTokenUsed = async (tokenId) => {
+  try {
+    await query(
+      `UPDATE password_reset_tokens
+       SET used = TRUE, used_at = NOW()
+       WHERE id = $1`,
+      [tokenId]
+    );
+  } catch (error) {
+    console.error('Error marking password reset token as used:', error);
+    throw error;
+  }
+};
+
+/**
+ * Cleanup expired tokens
+ */
+export const deleteExpiredPasswordResetTokens = async () => {
+  try {
+    await query('DELETE FROM password_reset_tokens WHERE expires_at < NOW() OR used = TRUE');
+  } catch (error) {
+    console.error('Error deleting expired password reset tokens:', error);
     throw error;
   }
 };

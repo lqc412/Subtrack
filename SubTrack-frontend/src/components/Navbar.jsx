@@ -1,6 +1,6 @@
-// 修改 src/components/Navbar.jsx 中的头像显示
+// Update avatar display within src/components/Navbar.jsx
 
-import AvatarDisplay from './AvatarDisplay'; // 导入头像组件
+import AvatarDisplay from './AvatarDisplay'; // Import the avatar component
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar({onSearch}){
@@ -20,7 +20,7 @@ export default function Navbar({onSearch}){
             <input type="text" placeholder="Search" onChange={handleSearchChange} className="input input-bordered w-24 md:w-auto" />
             <div className="dropdown dropdown-end">
               <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-                {/* 替换为AvatarDisplay组件 */}
+                {/* Replaced with the AvatarDisplay component */}
                 <AvatarDisplay 
                   src={currentUser?.profile_image}
                   username={currentUser?.username || 'User'}
@@ -45,3 +45,4 @@ export default function Navbar({onSearch}){
 </>
   )
 }
+

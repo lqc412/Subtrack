@@ -1,5 +1,6 @@
 // SubTrack-backend/src/controllers/emailController.js - Fixed version
 import EmailService from '../services/emailServices.js';
+import { findUserById } from '../services/authServices.js';
 
 // Get user's email connections
 export const getUserConnections = async (req, res) => {
@@ -68,8 +69,14 @@ export const handleCallback = async (req, res) => {
       }
     } catch (emailError) {
       console.error('Error getting user email:', emailError);
-      // Fallback to authenticated user's email if available
-      emailAddress = req.user.email || 'unknown@email.com';
+
+      try {
+        const user = await findUserById(req.user.id);
+        emailAddress = user?.email || req.user?.email || 'unknown@email.com';
+      } catch (lookupError) {
+        console.error('Error retrieving user email from database:', lookupError);
+        emailAddress = req.user?.email || 'unknown@email.com';
+      }
     }
     
     // Add email connection to database

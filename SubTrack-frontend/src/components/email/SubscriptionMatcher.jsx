@@ -290,6 +290,9 @@ export default function SubscriptionMatcher({ newSubscriptions, onComplete }) {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{subscription.company}</span>
+                          {subscription.detected_via_ai && (
+                            <span className="badge badge-info badge-sm">AI</span>
+                          )}
                           <button
                             className="btn btn-ghost btn-xs"
                             onClick={() => setEditingIndex(index)}
@@ -301,6 +304,11 @@ export default function SubscriptionMatcher({ newSubscriptions, onComplete }) {
                       {subscription.notes && (
                         <div className="text-xs text-gray-500 mt-1">
                           {subscription.notes}
+                        </div>
+                      )}
+                      {subscription.source && (
+                        <div className="text-[10px] uppercase tracking-wide text-gray-400 mt-1">
+                          Source: {subscription.source}
                         </div>
                       )}
                     </div>
