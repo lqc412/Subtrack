@@ -210,14 +210,24 @@ The application includes templates for detecting subscriptions from these servic
 ## 🛠️ Development
 
 ### Local Development Setup
+
+You can run the entire stack with Docker Compose:
+
+```bash
+# Full stack (frontend, backend, database)
+docker-compose up --build
+```
+
+Or run the services manually for iterative development:
+
 ```bash
 # Backend development
 cd SubTrack-backend
 npm install
-npm run dev
+npx nodemon src/index.js
 
 # Frontend development
-cd SubTrack-frontend
+cd ../SubTrack-frontend
 npm install
 npm run dev
 
